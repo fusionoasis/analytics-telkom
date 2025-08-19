@@ -324,6 +324,272 @@ def generate_timestamp_data():
     upload_all_files_from_folder(customer_parquet_path, "data/customer_usage")
     upload_all_files_from_folder(load_shedding_parquet_path, "data/load_shedding_schedules")
 
+    # ---------- Customer Feedback ----------
+    # Simulate customer complaints with text, sentiment label/score, and timestamps
+    customer_feedback = spark.range(200000).select(
+        expr(
+            "element_at(array("
+            "'Network is slow in my area',"
+            "'Frequent dropped calls',"
+            "'No coverage inside my building',"
+            "'High latency during peak hours',"
+            "'Billing issue with last invoice',"
+            "'SIM card not working',"
+            "'App keeps crashing',"
+            "'Unexpected charges on my account',"
+            "'Activation is delayed',"
+            "'Roaming does not work'"
+            "), cast(rand() * 10 as int) + 1)"
+        ).alias("text"),
+        expr("round(rand() * 2 - 1, 3)").alias("sentiment_score"),
+        random_timestamp_expr().alias("timestamp")
+    ).withColumn(
+        "sentiment_label",
+        expr("CASE WHEN sentiment_score < -0.2 THEN 'negative' WHEN sentiment_score > 0.2 THEN 'positive' ELSE 'neutral' END")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    )
+    feedback_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_feedback"
+    _clean_dbfs_path(feedback_parquet_path)
+    distinct_days_cf = [
+        (r["year"], r["month"], r["day"]) for r in customer_feedback.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_cf:
+        tmp_day_path = f"{feedback_parquet_path}/.tmp_day_{y}_{m}_{d}"
+        (customer_feedback
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
+        )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = feedback_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # ---------- Tower Imagery ----------
+    # Simulate drone imagery metadata with image paths and condition labels
+    tower_count = tower_locations_df.count()
+    tower_imagery = tower_locations_df.select(
+        col("tower_id"),
+        random_timestamp_expr().alias("timestamp")
+    ).withColumn(
+        "image_path",
+        expr("concat('dbfs:/mnt/dlstelkomnetworkprod/assets/tower_images/', tower_id, '/', cast(unix_timestamp(timestamp) as string), '.jpg')")
+    ).withColumn(
+        "condition_label",
+        expr("element_at(array('OK','Minor','Critical'), cast(rand() * 3 as int) + 1)")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    )
+    imagery_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_imagery"
+    _clean_dbfs_path(imagery_parquet_path)
+    distinct_days_ti = [
+        (r["year"], r["month"], r["day"]) for r in tower_imagery.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_ti:
+        tmp_day_path = f"{imagery_parquet_path}/.tmp_day_{y}_{m}_{d}"
+        (tower_imagery
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
+        )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = imagery_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # ---------- Voice Transcriptions ----------
+    # Simulate technician voice command transcriptions
+    voice_transcriptions = spark.range(120000).select(
+        col("id").cast("string").alias("technician_id"),
+        expr(
+            "element_at(array("
+            "'Start site inspection',"
+            "'Check signal levels',"
+            "'Replace faulty antenna',"
+            "'Confirm power status',"
+            "'Log maintenance complete',"
+            "'Escalate to network ops',"
+            "'Verify backhaul link',"
+            "'Capture tower imagery',"
+            "'Run diagnostic test',"
+            "'Close the ticket'"
+            "), cast(rand() * 10 as int) + 1)"
+        ).alias("transcription"),
+        random_timestamp_expr().alias("timestamp")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    )
+    vt_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/voice_transcriptions"
+    _clean_dbfs_path(vt_parquet_path)
+    distinct_days_vt = [
+        (r["year"], r["month"], r["day"]) for r in voice_transcriptions.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_vt:
+        tmp_day_path = f"{vt_parquet_path}/.tmp_day_{y}_{m}_{d}"
+        (voice_transcriptions
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
+        )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = vt_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # ---------- Tower Connectivity ----------
+    # Simulate tower-to-tower connectivity by linking each tower to two neighbors
+    neighbor_map = tower_locations_df.select(
+        col("tower_id").alias("dst_tower_id"),
+        expr("row_number() over (order by tower_id) - 1").alias("neighbor_index")
+    )
+    src_with_neighbors = tower_locations_df.select(
+        col("tower_id").alias("src_tower_id"),
+        expr("row_number() over (order by tower_id) - 1").alias("tower_index")
+    )
+    # Approximate modulo using total count
+    total_towers = neighbor_map.count()
+    edges_idx = src_with_neighbors.select(
+        col("src_tower_id"),
+        expr(f"(tower_index + 1) % {total_towers}").alias("neighbor_index")
+    ).union(
+        src_with_neighbors.select(
+            col("src_tower_id"),
+            expr(f"(tower_index + 2) % {total_towers}").alias("neighbor_index")
+        )
+    )
+    tower_connectivity = edges_idx.join(neighbor_map, on="neighbor_index", how="left").select(
+        col("src_tower_id"),
+        col("dst_tower_id"),
+        (rand() * 100).alias("signal_quality"),
+        random_timestamp_expr().alias("timestamp")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    )
+    connectivity_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_connectivity"
+    _clean_dbfs_path(connectivity_parquet_path)
+    distinct_days_tc = [
+        (r["year"], r["month"], r["day"]) for r in tower_connectivity.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_tc:
+        tmp_day_path = f"{connectivity_parquet_path}/.tmp_day_{y}_{m}_{d}"
+        (tower_connectivity
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
+        )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = connectivity_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # ---------- Tower Capacity ----------
+    tower_capacity = tower_locations_df.select(
+        col("tower_id"),
+        (rand() * 900 + 100).alias("capacity_mbps"),
+        (rand() * 80 + 10).alias("utilization_percent"),
+        random_timestamp_expr().alias("timestamp")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    )
+    capacity_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_capacity"
+    _clean_dbfs_path(capacity_parquet_path)
+    distinct_days_tcap = [
+        (r["year"], r["month"], r["day"]) for r in tower_capacity.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_tcap:
+        tmp_day_path = f"{capacity_parquet_path}/.tmp_day_{y}_{m}_{d}"
+        (tower_capacity
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
+        )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = capacity_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # ---------- Maintenance Crew ----------
+    # Simulate crew availability and locations
+    maintenance_crew = spark.range(5000).select(
+        col("id").cast("string").alias("crew_id"),
+        expr(f"element_at(array({regions_sql_array}), cast(rand() * {len(regions)} as int) + 1)").alias("region"),
+        (rand() * 7 + 22).alias("latitude"),
+        (rand() * 9 + 16).alias("longitude"),
+        expr("rand() < 0.7").alias("available"),
+        random_timestamp_expr().alias("shift_start")
+    ).withColumn(
+        "shift_end", expr("timestampadd(HOUR, 8, shift_start)")
+    ).withColumn(
+        "year", year(col("shift_start"))
+    ).withColumn(
+        "month", month(col("shift_start"))
+    ).withColumn(
+        "day", dayofmonth(col("shift_start"))
+    )
+    crew_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/maintenance_crew"
+    _clean_dbfs_path(crew_parquet_path)
+    distinct_days_mc = [
+        (r["year"], r["month"], r["day"]) for r in maintenance_crew.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_mc:
+        tmp_day_path = f"{crew_parquet_path}/.tmp_day_{y}_{m}_{d}"
+        (maintenance_crew
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
+        )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = crew_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # Upload new datasets
+    upload_all_files_from_folder(feedback_parquet_path, "data/customer_feedback")
+    upload_all_files_from_folder(imagery_parquet_path, "data/tower_imagery")
+    upload_all_files_from_folder(vt_parquet_path, "data/voice_transcriptions")
+    upload_all_files_from_folder(connectivity_parquet_path, "data/tower_connectivity")
+    upload_all_files_from_folder(capacity_parquet_path, "data/tower_capacity")
+    upload_all_files_from_folder(crew_parquet_path, "data/maintenance_crew")
+
     return True
 
 
