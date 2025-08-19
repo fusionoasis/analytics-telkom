@@ -6,6 +6,7 @@ from pyspark.sql.functions import (
 import requests
 import base64
 import os
+import shutil
 from datetime import datetime
 
 # GitHub configuration
@@ -99,7 +100,8 @@ def generate_timestamp_data():
         "region", expr(f"element_at(array({regions_sql_array}), region_index + 1)")
     )
     tower_csv_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations"
-    tower_locations.write.format("csv").mode("overwrite").option("header", "true").partitionBy("region").save(tower_csv_path)
+    # Tower locations are static; write a single file (no time partitioning)
+    tower_locations.coalesce(1).write.format("csv").mode("overwrite").option("header", "true").save(tower_csv_path)
 
     tower_locations_df = tower_locations.withColumn("tower_index", expr("row_number() over (order by tower_id) - 1"))
 
@@ -137,7 +139,23 @@ def generate_timestamp_data():
         (col("timestamp") <= "2025-08-17 23:59:59")
     )
     network_json_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
-    network_logs.write.format("json").mode("overwrite").partitionBy("year", "month", "day", "region").save(network_json_path)
+    # Clean target and write one file per day (partitioned by year/month/day)
+    def _clean_dbfs_path(dbfs_path: str):
+        local = dbfs_path.replace("dbfs:", "/dbfs")
+        if os.path.exists(local):
+            shutil.rmtree(local)
+
+    _clean_dbfs_path(network_json_path)
+    distinct_days_nw = [
+        (r["year"], r["month"], r["day"]) for r in network_logs.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_nw:
+        day_path = f"{network_json_path}/year={y}/month={m}/day={d}"
+        (network_logs
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("json").mode("overwrite").save(day_path)
+        )
 
     # ---------- Weather Data ----------
     tower_dates = network_logs.select("tower_id", "timestamp").distinct()
@@ -165,7 +183,17 @@ def generate_timestamp_data():
         "region", expr(f"element_at(array({regions_sql_array}), region_index + 1)")
     )
     weather_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/weather_data"
-    weather_data.write.format("parquet").option("header", "true").mode("overwrite").partitionBy("year", "month", "day", "region").save(weather_parquet_path)
+    _clean_dbfs_path(weather_parquet_path)
+    distinct_days_w = [
+        (r["year"], r["month"], r["day"]) for r in weather_data.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_w:
+        day_path = f"{weather_parquet_path}/year={y}/month={m}/day={d}"
+        (weather_data
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").option("header", "true").mode("overwrite").save(day_path)
+        )
 
     # Also produce Weather Data as JSON with requested fields: location, temperature, precipitation, timestamp
     weather_json = weather_data.join(
@@ -180,7 +208,17 @@ def generate_timestamp_data():
         col("year"), col("month"), col("day"), col("region")
     )
     weather_json_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/weather_data_json"
-    weather_json.write.format("json").mode("overwrite").partitionBy("year", "month", "day", "region").save(weather_json_path)
+    _clean_dbfs_path(weather_json_path)
+    distinct_days_wj = [
+        (r["year"], r["month"], r["day"]) for r in weather_json.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_wj:
+        day_path = f"{weather_json_path}/year={y}/month={m}/day={d}"
+        (weather_json
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("json").mode("overwrite").save(day_path)
+        )
 
     # ---------- Customer Usage ----------
     customer_usage = spark.range(5640000).select(
@@ -208,7 +246,17 @@ def generate_timestamp_data():
         "day", dayofmonth(col("timestamp"))
     )
     customer_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_usage"
-    customer_usage.write.format("parquet").mode("overwrite").partitionBy("year", "month", "day").save(customer_parquet_path)
+    _clean_dbfs_path(customer_parquet_path)
+    distinct_days_cu = [
+        (r["year"], r["month"], r["day"]) for r in customer_usage.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_cu:
+        day_path = f"{customer_parquet_path}/year={y}/month={m}/day={d}"
+        (customer_usage
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("parquet").mode("overwrite").save(day_path)
+        )
 
     # ---------- Load Shedding Schedules ----------
     # Generate synthetic schedules with region, start_time, end_time
@@ -225,7 +273,17 @@ def generate_timestamp_data():
         "day", dayofmonth(col("start_time"))
     )
     load_shedding_csv_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/load_shedding_schedules"
-    load_shedding.write.format("csv").mode("overwrite").option("header", "true").partitionBy("region", "year", "month", "day").save(load_shedding_csv_path)
+    _clean_dbfs_path(load_shedding_csv_path)
+    distinct_days_ls = [
+        (r["year"], r["month"], r["day"]) for r in load_shedding.select("year", "month", "day").distinct().collect()
+    ]
+    for y, m, d in distinct_days_ls:
+        day_path = f"{load_shedding_csv_path}/year={y}/month={m}/day={d}"
+        (load_shedding
+         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+         .coalesce(1)
+         .write.format("csv").option("header", "true").mode("overwrite").save(day_path)
+        )
 
     # ---------- Upload to GitHub ----------
     def upload_all_files_from_folder(dbfs_folder, github_folder):
