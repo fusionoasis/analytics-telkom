@@ -202,16 +202,19 @@ def generate_interval_data():
         "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
     )
     network_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
-    distinct_days_nw = [(r["year"], r["month"], r["day"]) for r in network_logs.select("year", "month", "day").distinct().collect()]
-    nw_day_subdirs = []
-    for y, m, d in distinct_days_nw:
-        day_path = f"{network_path}/year={y}/month={m}/day={d}"
-        nw_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    # One file per interval: write to tmp, move single part to root
+    tmp_nw = f"{network_path}/.tmp_interval_{int(end_time.timestamp())}"
     (network_logs
-     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
      .coalesce(1)
-     .write.format("parquet").mode("append").save(day_path)
+     .write.format("parquet").mode("overwrite").save(tmp_nw)
     )
+    tmp_local = tmp_nw.replace("dbfs:", "/dbfs")
+    root_local = network_path.replace("dbfs:", "/dbfs")
+    if os.path.isdir(tmp_local):
+        for fname in os.listdir(tmp_local):
+            if fname.startswith("part-"):
+                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Customer Usage ===
     customer_usage = spark.range(30000).select(
@@ -234,16 +237,18 @@ def generate_interval_data():
         "day", dayofmonth(col("timestamp"))
     )
     customer_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_usage"
-    distinct_days_cu = [(r["year"], r["month"], r["day"]) for r in customer_usage.select("year", "month", "day").distinct().collect()]
-    cu_day_subdirs = []
-    for y, m, d in distinct_days_cu:
-        day_path = f"{customer_path}/year={y}/month={m}/day={d}"
-        cu_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    tmp_cu = f"{customer_path}/.tmp_interval_{int(end_time.timestamp())}"
     (customer_usage
-     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
      .coalesce(1)
-     .write.format("parquet").mode("append").save(day_path)
+     .write.format("parquet").mode("overwrite").save(tmp_cu)
     )
+    tmp_local = tmp_cu.replace("dbfs:", "/dbfs")
+    root_local = customer_path.replace("dbfs:", "/dbfs")
+    if os.path.isdir(tmp_local):
+        for fname in os.listdir(tmp_local):
+            if fname.startswith("part-"):
+                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Weather Data ===
     tower_dates = network_logs.select("tower_id", "timestamp").distinct()
@@ -273,16 +278,18 @@ def generate_interval_data():
         "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
     )
     weather_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/weather_data"
-    distinct_days_w = [(r["year"], r["month"], r["day"]) for r in weather_data.select("year", "month", "day").distinct().collect()]
-    w_day_subdirs = []
-    for y, m, d in distinct_days_w:
-        day_path = f"{weather_path}/year={y}/month={m}/day={d}"
-        w_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    tmp_w = f"{weather_path}/.tmp_interval_{int(end_time.timestamp())}"
     (weather_data
-     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
      .coalesce(1)
-     .write.format("parquet").mode("append").save(day_path)
+     .write.format("parquet").mode("overwrite").save(tmp_w)
     )
+    tmp_local = tmp_w.replace("dbfs:", "/dbfs")
+    root_local = weather_path.replace("dbfs:", "/dbfs")
+    if os.path.isdir(tmp_local):
+        for fname in os.listdir(tmp_local):
+            if fname.startswith("part-"):
+                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Load Shedding Schedules ===
     load_shedding = spark.range(5000).select(
@@ -298,23 +305,25 @@ def generate_interval_data():
         "day", dayofmonth(col("start_time"))
     )
     load_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/load_shedding_schedules"
-    distinct_days_ls = [(r["year"], r["month"], r["day"]) for r in load_shedding.select("year", "month", "day").distinct().collect()]
-    ls_day_subdirs = []
-    for y, m, d in distinct_days_ls:
-        day_path = f"{load_path}/year={y}/month={m}/day={d}"
-        ls_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    tmp_ls = f"{load_path}/.tmp_interval_{int(end_time.timestamp())}"
     (load_shedding
-     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
      .coalesce(1)
-     .write.format("parquet").mode("append").save(day_path)
+     .write.format("parquet").mode("overwrite").save(tmp_ls)
     )
+    tmp_local = tmp_ls.replace("dbfs:", "/dbfs")
+    root_local = load_path.replace("dbfs:", "/dbfs")
+    if os.path.isdir(tmp_local):
+        for fname in os.listdir(tmp_local):
+            if fname.startswith("part-"):
+                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Upload to GitHub ===
     commit_msg = f"Data update for interval {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}"
-    upload_all_files_from_folder(network_path, "data/network_logs", commit_msg, subdirs=nw_day_subdirs)
-    upload_all_files_from_folder(customer_path, "data/customer_usage", commit_msg, subdirs=cu_day_subdirs)
-    upload_all_files_from_folder(weather_path, "data/weather_data", commit_msg, subdirs=w_day_subdirs)
-    upload_all_files_from_folder(load_path, "data/load_shedding_schedules", commit_msg, subdirs=ls_day_subdirs)
+    upload_all_files_from_folder(network_path, "data/network_logs", commit_msg)
+    upload_all_files_from_folder(customer_path, "data/customer_usage", commit_msg)
+    upload_all_files_from_folder(weather_path, "data/weather_data", commit_msg)
+    upload_all_files_from_folder(load_path, "data/load_shedding_schedules", commit_msg)
 
     return True
 

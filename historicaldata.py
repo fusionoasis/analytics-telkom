@@ -144,12 +144,21 @@ def generate_timestamp_data():
         (r["year"], r["month"], r["day"]) for r in network_logs.select("year", "month", "day").distinct().collect()
     ]
     for y, m, d in distinct_days_nw:
-        day_path = f"{network_parquet_path}/year={y}/month={m}/day={d}"
+        tmp_day_path = f"{network_parquet_path}/.tmp_day_{y}_{m}_{d}"
         (network_logs
          .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
          .coalesce(1)
-         .write.format("parquet").mode("overwrite").save(day_path)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
         )
+        # Move single part file to root
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = network_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            # cleanup
+            shutil.rmtree(tmp_local, ignore_errors=True)
 
     # ---------- Weather Data ----------
     tower_dates = network_logs.select("tower_id", "timestamp").distinct()
@@ -182,12 +191,19 @@ def generate_timestamp_data():
         (r["year"], r["month"], r["day"]) for r in weather_data.select("year", "month", "day").distinct().collect()
     ]
     for y, m, d in distinct_days_w:
-        day_path = f"{weather_parquet_path}/year={y}/month={m}/day={d}"
+        tmp_day_path = f"{weather_parquet_path}/.tmp_day_{y}_{m}_{d}"
         (weather_data
          .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
          .coalesce(1)
-         .write.format("parquet").option("header", "true").mode("overwrite").save(day_path)
+         .write.format("parquet").option("header", "true").mode("overwrite").save(tmp_day_path)
         )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = weather_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
 
     # ---------- Customer Usage ----------
     customer_usage = spark.range(6000000).select(
@@ -219,12 +235,19 @@ def generate_timestamp_data():
         (r["year"], r["month"], r["day"]) for r in customer_usage.select("year", "month", "day").distinct().collect()
     ]
     for y, m, d in distinct_days_cu:
-        day_path = f"{customer_parquet_path}/year={y}/month={m}/day={d}"
+        tmp_day_path = f"{customer_parquet_path}/.tmp_day_{y}_{m}_{d}"
         (customer_usage
          .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
          .coalesce(1)
-         .write.format("parquet").mode("overwrite").save(day_path)
+         .write.format("parquet").mode("overwrite").save(tmp_day_path)
         )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = customer_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
 
     # ---------- Load Shedding Schedules ----------
     # Generate synthetic schedules with region, start_time, end_time
@@ -246,12 +269,19 @@ def generate_timestamp_data():
         (r["year"], r["month"], r["day"]) for r in load_shedding.select("year", "month", "day").distinct().collect()
     ]
     for y, m, d in distinct_days_ls:
-        day_path = f"{load_shedding_parquet_path}/year={y}/month={m}/day={d}"
+        tmp_day_path = f"{load_shedding_parquet_path}/.tmp_day_{y}_{m}_{d}"
         (load_shedding
          .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
          .coalesce(1)
-         .write.format("parquet").option("header", "true").mode("overwrite").save(day_path)
+         .write.format("parquet").option("header", "true").mode("overwrite").save(tmp_day_path)
         )
+        tmp_local = tmp_day_path.replace("dbfs:", "/dbfs")
+        root_local = load_shedding_parquet_path.replace("dbfs:", "/dbfs")
+        if os.path.isdir(tmp_local):
+            for fname in os.listdir(tmp_local):
+                if fname.startswith("part-"):
+                    os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+            shutil.rmtree(tmp_local, ignore_errors=True)
 
     # ---------- Upload to GitHub ----------
     def upload_all_files_from_folder(dbfs_folder, github_folder):
