@@ -10,8 +10,15 @@ import shutil
 from datetime import datetime, timedelta
 
 # === GitHub Configuration ===
-GITHUB_TOKEN = dbutils.secrets.get(scope="databricksazure", key="github-pat-token")
-GITHUB_REPO = "fusionoasis/telkom-data"
+# Try Databricks secret first; fall back to environment variable if not available.
+try:
+    GITHUB_TOKEN = dbutils.secrets.get(scope="databricksazure", key="github-pat-token")  # type: ignore[name-defined]
+except Exception:
+    GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+
+# Allow overriding repo/branch via environment for flexibility; keep sensible defaults.
+GITHUB_REPO = os.getenv("GITHUB_REPO", "fusionoasis/analytics-telkom")
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents"
 
 spark = SparkSession.builder.getOrCreate()
@@ -19,13 +26,20 @@ spark = SparkSession.builder.getOrCreate()
 # === GitHub Upload Helpers ===
 def get_last_index_from_github(github_folder):
     """Check the highest part number in GitHub folder"""
+    if not GITHUB_TOKEN:
+        print("[GitHub] Skipping index probe: GITHUB_TOKEN not set")
+        return -1
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json"
     }
-    response = requests.get(f"{GITHUB_API_URL}/{github_folder}", headers=headers)
+    response = requests.get(f"{GITHUB_API_URL}/{github_folder}", headers=headers, params={"ref": GITHUB_BRANCH})
 
     if response.status_code != 200:
+        try:
+            print(f"[GitHub] Index probe failed {response.status_code} for {github_folder}: {response.text}")
+        except Exception:
+            pass
         return -1
 
     files = [item["name"] for item in response.json() if item["name"].startswith("part-")]
@@ -46,6 +60,15 @@ def upload_to_github(file_path, github_path, commit_message):
 
     If the file already exists, include its SHA to perform an update; otherwise create it.
     """
+    if not GITHUB_TOKEN:
+        print("[GitHub] Skipping upload: GITHUB_TOKEN not set")
+        return False
+    if not GITHUB_REPO:
+        print("[GitHub] Skipping upload: GITHUB_REPO not configured")
+        return False
+    if not GITHUB_BRANCH:
+        print("[GitHub] Skipping upload: GITHUB_BRANCH not set")
+        return False
     local_path = file_path.replace("dbfs:", "/dbfs")
     with open(local_path, "rb") as f:
         content = f.read()
@@ -58,19 +81,60 @@ def upload_to_github(file_path, github_path, commit_message):
 
     # Try to get existing file SHA (required for updates)
     sha = None
-    meta_resp = requests.get(f"{GITHUB_API_URL}/{github_path}", headers=headers)
+    meta_resp = requests.get(f"{GITHUB_API_URL}/{github_path}", headers=headers, params={"ref": GITHUB_BRANCH})
     if meta_resp.status_code == 200:
         try:
             sha = meta_resp.json().get("sha")
         except Exception:
             sha = None
 
-    payload = {"message": commit_message, "content": content_encoded}
+    payload = {"message": commit_message, "content": content_encoded, "branch": GITHUB_BRANCH}
     if sha:
         payload["sha"] = sha
 
     response = requests.put(f"{GITHUB_API_URL}/{github_path}", json=payload, headers=headers)
-    return response.status_code in [200, 201]
+    ok = response.status_code in [200, 201]
+    if not ok:
+        try:
+            print(f"[GitHub] Upload failed {response.status_code} for {github_path}: {response.text}")
+        except Exception:
+            pass
+    else:
+        print(f"[GitHub] Uploaded {github_path} ({len(content)} bytes) → {response.status_code}")
+    return ok
+
+def get_last_index_from_local(local_folder: str) -> int:
+    """Read local DBFS-mounted folder and find highest index in files named part-00000-tid.*"""
+    if not os.path.isdir(local_folder):
+        return -1
+    max_idx = -1
+    for name in os.listdir(local_folder):
+        if not name.startswith("part-"):
+            continue
+        try:
+            core = name.split("-")[1]  # 00000
+            idx = int(core)
+            max_idx = max(max_idx, idx)
+        except Exception:
+            continue
+    return max_idx
+
+
+def upload_file_with_github_index(local_file_path: str, github_folder: str, commit_msg: str) -> bool:
+    """Upload the given local file to GitHub using the next sequential index for that GitHub folder.
+    Local file is not renamed; only the remote path uses the new index.
+    """
+    if not local_file_path:
+        return False
+    gh_last = get_last_index_from_github(github_folder)
+    gh_next = gh_last + 1
+    _, ext = os.path.splitext(local_file_path)
+    remote_name = f"part-{gh_next:05d}-tid{ext}"
+    github_path = f"{github_folder}/{remote_name}"
+    ok = upload_to_github(local_file_path, github_path, commit_msg)
+    if not ok:
+        print(f"[GitHub] Upload attempt failed for local file {local_file_path} to {github_path}")
+    return ok
 
 def upload_all_files_from_folder(dbfs_folder, github_folder, commit_msg, subdirs=None):
     """Recursively upload Spark output files, renaming locally and preserving partitions.
@@ -210,10 +274,17 @@ def generate_interval_data():
     )
     tmp_local = tmp_nw.replace("dbfs:", "/dbfs")
     root_local = network_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    nw_local_file = ""
     if os.path.isdir(tmp_local):
-        for fname in os.listdir(tmp_local):
-            if fname.startswith("part-"):
-                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        # Determine next local index once per interval
+        next_idx = get_last_index_from_local(root_local) + 1
+        # Find the single part file in the tmp output
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            nw_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, nw_local_file)
         shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Customer Usage ===
@@ -244,10 +315,15 @@ def generate_interval_data():
     )
     tmp_local = tmp_cu.replace("dbfs:", "/dbfs")
     root_local = customer_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    cu_local_file = ""
     if os.path.isdir(tmp_local):
-        for fname in os.listdir(tmp_local):
-            if fname.startswith("part-"):
-                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            cu_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, cu_local_file)
         shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Weather Data ===
@@ -285,10 +361,15 @@ def generate_interval_data():
     )
     tmp_local = tmp_w.replace("dbfs:", "/dbfs")
     root_local = weather_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    w_local_file = ""
     if os.path.isdir(tmp_local):
-        for fname in os.listdir(tmp_local):
-            if fname.startswith("part-"):
-                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            w_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, w_local_file)
         shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Load Shedding Schedules ===
@@ -312,18 +393,24 @@ def generate_interval_data():
     )
     tmp_local = tmp_ls.replace("dbfs:", "/dbfs")
     root_local = load_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    ls_local_file = ""
     if os.path.isdir(tmp_local):
-        for fname in os.listdir(tmp_local):
-            if fname.startswith("part-"):
-                os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            ls_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, ls_local_file)
         shutil.rmtree(tmp_local, ignore_errors=True)
 
     # === Upload to GitHub ===
     commit_msg = f"Data update for interval {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}"
-    upload_all_files_from_folder(network_path, "data/network_logs", commit_msg)
-    upload_all_files_from_folder(customer_path, "data/customer_usage", commit_msg)
-    upload_all_files_from_folder(weather_path, "data/weather_data", commit_msg)
-    upload_all_files_from_folder(load_path, "data/load_shedding_schedules", commit_msg)
+    up1 = upload_file_with_github_index(nw_local_file, "data/network_logs", commit_msg)
+    up2 = upload_file_with_github_index(cu_local_file, "data/customer_usage", commit_msg)
+    up3 = upload_file_with_github_index(w_local_file, "data/weather_data", commit_msg)
+    up4 = upload_file_with_github_index(ls_local_file, "data/load_shedding_schedules", commit_msg)
+    print(f"[GitHub] Results → network:{up1} customer:{up2} weather:{up3} load:{up4}")
 
     return True
 
