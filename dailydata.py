@@ -1,0 +1,323 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import (
+    rand, col, expr, when, monotonically_increasing_id,
+    year, month, dayofmonth, to_timestamp, lit, hash as spark_hash, pmod
+)
+import requests
+import base64
+import os
+import shutil
+from datetime import datetime, timedelta
+
+# === GitHub Configuration ===
+GITHUB_TOKEN = dbutils.secrets.get(scope="databricksazure", key="github-pat-token")
+GITHUB_REPO = "fusionoasis/telkom-data"
+GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents"
+
+spark = SparkSession.builder.getOrCreate()
+
+# === GitHub Upload Helpers ===
+def get_last_index_from_github(github_folder):
+    """Check the highest part number in GitHub folder"""
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    response = requests.get(f"{GITHUB_API_URL}/{github_folder}", headers=headers)
+
+    if response.status_code != 200:
+        return -1
+
+    files = [item["name"] for item in response.json() if item["name"].startswith("part-")]
+    if not files:
+        return -1
+
+    indices = []
+    for f in files:
+        try:
+            idx = int(f.split("-")[1])
+            indices.append(idx)
+        except:
+            continue
+    return max(indices) if indices else -1
+
+def upload_to_github(file_path, github_path, commit_message):
+    """Create or update a single file in the GitHub repository via Contents API.
+
+    If the file already exists, include its SHA to perform an update; otherwise create it.
+    """
+    local_path = file_path.replace("dbfs:", "/dbfs")
+    with open(local_path, "rb") as f:
+        content = f.read()
+    content_encoded = base64.b64encode(content).decode()
+
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    # Try to get existing file SHA (required for updates)
+    sha = None
+    meta_resp = requests.get(f"{GITHUB_API_URL}/{github_path}", headers=headers)
+    if meta_resp.status_code == 200:
+        try:
+            sha = meta_resp.json().get("sha")
+        except Exception:
+            sha = None
+
+    payload = {"message": commit_message, "content": content_encoded}
+    if sha:
+        payload["sha"] = sha
+
+    response = requests.put(f"{GITHUB_API_URL}/{github_path}", json=payload, headers=headers)
+    return response.status_code in [200, 201]
+
+def upload_all_files_from_folder(dbfs_folder, github_folder, commit_msg, subdirs=None):
+    """Recursively upload Spark output files, renaming locally and preserving partitions.
+    - Only processes fresh Spark part files (skips already-renamed files containing '-tid').
+    - If subdirs is provided, restricts uploads to those relative subdirectories.
+    Maintains per-folder indexing in GitHub to avoid collisions.
+    """
+    root_local = dbfs_folder.replace("dbfs:", "/dbfs")
+
+    # Build list of directories to traverse
+    dirs_to_walk = []
+    if subdirs:
+        for rel in subdirs:
+            abs_dir = os.path.join(root_local, rel).replace("/", os.sep)
+            if os.path.isdir(abs_dir):
+                dirs_to_walk.append(abs_dir)
+    else:
+        dirs_to_walk = [root_local]
+
+    for start_dir in dirs_to_walk:
+        for dirpath, _, filenames in os.walk(start_dir):
+            # Only fresh Spark outputs; ignore already-renamed '-tid' files and control files
+            part_files = sorted([
+                fn for fn in filenames
+                if fn.startswith("part-") and "-tid" not in fn
+            ])
+            if not part_files:
+                continue
+
+            rel_dir = os.path.relpath(dirpath, root_local).replace("\\", "/")
+            gh_subfolder = f"{github_folder}/{rel_dir}" if rel_dir != "." else github_folder
+
+            last_idx = get_last_index_from_github(gh_subfolder)
+            next_idx = last_idx + 1
+
+            for file in part_files:
+                file_ext = os.path.splitext(file)[1]
+                new_name = f"part-{next_idx:05d}-tid{file_ext}"
+
+                old_path = os.path.join(dirpath, file)
+                new_path = os.path.join(dirpath, new_name)
+
+                if not os.path.exists(new_path):
+                    os.rename(old_path, new_path)
+
+                github_path = f"{gh_subfolder}/{new_name}"
+                upload_to_github(new_path, github_path, commit_msg)
+
+                next_idx += 1
+
+# === Tower Data Generation ===
+def generate_tower_locations_once():
+    """Generate tower locations (only needed once) and store as Parquet."""
+    regions = [
+        "Gauteng", "KwaZulu-Natal", "Western Cape", "Eastern Cape", "Free State",
+        "Mpumalanga", "Northern Cape", "Limpopo", "North West"
+    ]
+    regions_sql_array = ", ".join([f"'{r}'" for r in regions])
+
+    tower_locations = spark.range(15000).select(
+        col("id").cast("string").alias("tower_id"),
+        (rand() * 7 + 22).alias("latitude"),
+        (rand() * 9 + 16).alias("longitude")
+    ).withColumn(
+        "region_index", pmod(spark_hash(col("tower_id")), lit(len(regions))).cast("int")
+    ).withColumn(
+        "region", expr(f"element_at(array({regions_sql_array}), region_index + 1)")
+    )
+    tower_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations"
+    # Single parquet file for tower locations
+    _clean_dbfs_path(tower_path)
+    tower_locations.coalesce(1).write.format("parquet").mode("overwrite").save(tower_path)
+    upload_all_files_from_folder(tower_path, "data/tower_locations", "Initial tower locations dataset")
+    return tower_locations
+
+# === Timestamp Utilities ===
+def random_timestamp_in_interval(start_time, end_time):
+    """Generate random timestamp (as timestamp type) within a specific interval."""
+    start_ts = int(start_time.timestamp())
+    end_ts = int(end_time.timestamp())
+    return expr(f"to_timestamp(from_unixtime({start_ts} + cast(rand() * {end_ts - start_ts} as bigint)))")
+
+# === Main Data Generation ===
+def _clean_dbfs_path(dbfs_path: str):
+    local = dbfs_path.replace("dbfs:", "/dbfs")
+    if os.path.exists(local):
+        shutil.rmtree(local)
+
+
+def generate_interval_data():
+    """Generate network logs, customer usage, and weather data for the previous 4-hour interval"""
+    end_time = datetime.now()
+    start_time = end_time - timedelta(hours=4)
+
+    # Load or generate tower locations
+    try:
+        tower_locations = spark.read.format("parquet").load("dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations")
+        tower_locations = tower_locations.limit(15000)
+    except:
+        tower_locations = generate_tower_locations_once()
+
+    tower_locations_df = tower_locations.withColumn("tower_index", monotonically_increasing_id())
+    tower_count = tower_locations_df.count()
+
+    # === Network Logs ===
+    network_logs = spark.range(30000).select(
+        (rand() * tower_count).cast("long").alias("tower_index")
+    ).join(
+        tower_locations_df, on="tower_index", how="left"
+    ).select(
+        col("tower_id"),
+        (rand() * 100).alias("signal_strength"),
+        (rand() * 10).alias("latency_ms"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp"),
+        (rand() * 5 + 95).alias("uptime"),
+        expr("CASE WHEN rand() < 0.94 THEN NULL WHEN rand() < 0.5 THEN 'E001' ELSE 'E002' END").alias("error_codes")
+    ).withColumn(
+        "signal_strength",
+        when(col("signal_strength") < 20, col("signal_strength") * 0.8).otherwise(col("signal_strength"))
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    ).withColumn(
+        "region_index", pmod(spark_hash(col("tower_id")), lit(9)).cast("int")
+    ).withColumn(
+        "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
+    )
+    network_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
+    distinct_days_nw = [(r["year"], r["month"], r["day"]) for r in network_logs.select("year", "month", "day").distinct().collect()]
+    nw_day_subdirs = []
+    for y, m, d in distinct_days_nw:
+        day_path = f"{network_path}/year={y}/month={m}/day={d}"
+        nw_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    (network_logs
+     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+     .coalesce(1)
+     .write.format("parquet").mode("append").save(day_path)
+    )
+
+    # === Customer Usage ===
+    customer_usage = spark.range(30000).select(
+        col("id").cast("string").alias("customer_id"),
+        (rand() * 1000).alias("data_usage_mb"),
+        (rand() * 60).alias("call_duration_min"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+    ).withColumn(
+        "data_usage_mb",
+        when(col("data_usage_mb") > 800, col("data_usage_mb") * 1.2).otherwise(col("data_usage_mb"))
+    ).withColumn(
+        "data_usage", col("data_usage_mb")
+    ).withColumn(
+        "call_duration", col("call_duration_min")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    )
+    customer_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_usage"
+    distinct_days_cu = [(r["year"], r["month"], r["day"]) for r in customer_usage.select("year", "month", "day").distinct().collect()]
+    cu_day_subdirs = []
+    for y, m, d in distinct_days_cu:
+        day_path = f"{customer_path}/year={y}/month={m}/day={d}"
+        cu_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    (customer_usage
+     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+     .coalesce(1)
+     .write.format("parquet").mode("append").save(day_path)
+    )
+
+    # === Weather Data ===
+    tower_dates = network_logs.select("tower_id", "timestamp").distinct()
+    weather_data = tower_dates.withColumn(
+        "temperature_c", (rand() * 15 + 20).cast("double")
+    ).withColumn(
+        "humidity_percent", (rand() * 40 + 40).cast("double")
+    ).withColumn(
+        "wind_speed_mps", (rand() * 10).cast("double")
+    ).withColumn(
+        "weather_condition", expr(
+            "CASE WHEN rand() < 0.2 THEN 'Rain' "
+            "WHEN rand() < 0.5 THEN 'Clouds' "
+            "ELSE 'Clear' END"
+        )
+    ).withColumn(
+        "visibility_km", (rand() * 10).cast("double")
+    ).withColumn(
+        "year", year(col("timestamp"))
+    ).withColumn(
+        "month", month(col("timestamp"))
+    ).withColumn(
+        "day", dayofmonth(col("timestamp"))
+    ).withColumn(
+        "region_index", pmod(spark_hash(col("tower_id")), lit(9)).cast("int")
+    ).withColumn(
+        "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
+    )
+    weather_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/weather_data"
+    distinct_days_w = [(r["year"], r["month"], r["day"]) for r in weather_data.select("year", "month", "day").distinct().collect()]
+    w_day_subdirs = []
+    for y, m, d in distinct_days_w:
+        day_path = f"{weather_path}/year={y}/month={m}/day={d}"
+        w_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    (weather_data
+     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+     .coalesce(1)
+     .write.format("parquet").mode("append").save(day_path)
+    )
+
+    # === Load Shedding Schedules ===
+    load_shedding = spark.range(5000).select(
+        expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), cast(rand() * 9 as int) + 1)").alias("region"),
+        random_timestamp_in_interval(start_time, end_time).alias("start_time")
+    ).withColumn(
+        "end_time", expr("timestampadd(HOUR, cast(rand() * 3 + 1 as int), start_time)")
+    ).withColumn(
+        "year", year(col("start_time"))
+    ).withColumn(
+        "month", month(col("start_time"))
+    ).withColumn(
+        "day", dayofmonth(col("start_time"))
+    )
+    load_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/load_shedding_schedules"
+    distinct_days_ls = [(r["year"], r["month"], r["day"]) for r in load_shedding.select("year", "month", "day").distinct().collect()]
+    ls_day_subdirs = []
+    for y, m, d in distinct_days_ls:
+        day_path = f"{load_path}/year={y}/month={m}/day={d}"
+        ls_day_subdirs.append(f"year={y}/month={m}/day={d}")
+    (load_shedding
+     .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
+     .coalesce(1)
+     .write.format("parquet").mode("append").save(day_path)
+    )
+
+    # === Upload to GitHub ===
+    commit_msg = f"Data update for interval {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}"
+    upload_all_files_from_folder(network_path, "data/network_logs", commit_msg, subdirs=nw_day_subdirs)
+    upload_all_files_from_folder(customer_path, "data/customer_usage", commit_msg, subdirs=cu_day_subdirs)
+    upload_all_files_from_folder(weather_path, "data/weather_data", commit_msg, subdirs=w_day_subdirs)
+    upload_all_files_from_folder(load_path, "data/load_shedding_schedules", commit_msg, subdirs=ls_day_subdirs)
+
+    return True
+
+# === Main Execution ===
+if __name__ == "__main__":
+    generate_interval_data()

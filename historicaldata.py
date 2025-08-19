@@ -11,7 +11,7 @@ from datetime import datetime
 
 # GitHub configuration
 GITHUB_TOKEN = dbutils.secrets.get(scope="databricksazure", key="github-pat-token")
-GITHUB_REPO = "fusionoasis/telkom-data"
+GITHUB_REPO = "fusionoasis/analytics-telkom"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents"
 
 spark = SparkSession.builder.getOrCreate()
@@ -67,12 +67,12 @@ def upload_to_github(file_path, github_path, commit_message):
 
 
 def random_timestamp_expr():
-    """Generate random timestamp between 2025-07-01 and 2025-08-17"""
+    """Generate random timestamp between 2025-07-01 and 2025-08-19"""
     return expr("""
         timestampadd(
             SECOND,
             cast(rand() * 86400 as int),
-            date_add(to_date('2025-07-01'), cast(rand() * 47 as int))
+            date_add(to_date('2025-07-01'), cast(rand() * 50 as int))
         )
     """)
 
@@ -81,7 +81,6 @@ def generate_timestamp_data():
     current_time = datetime.now()
     commit_msg = f"Data update {current_time.strftime('%Y%m%d_%H%M%S')}"
 
-    # Deterministic region assignment across datasets
     regions = [
         "Gauteng", "KwaZulu-Natal", "Western Cape", "Eastern Cape", "Free State",
         "Mpumalanga", "Northern Cape", "Limpopo", "North West"
@@ -94,19 +93,17 @@ def generate_timestamp_data():
         (rand() * 7 + 22).alias("latitude"),
         (rand() * 9 + 16).alias("longitude")
     ).withColumn(
-        # deterministic region assignment
         "region_index", pmod(spark_hash(col("tower_id")), lit(len(regions))).cast("int")
     ).withColumn(
         "region", expr(f"element_at(array({regions_sql_array}), region_index + 1)")
     )
-    tower_csv_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations"
-    # Tower locations are static; write a single file (no time partitioning)
-    tower_locations.coalesce(1).write.format("csv").mode("overwrite").option("header", "true").save(tower_csv_path)
+    tower_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations"
+    tower_locations.coalesce(1).write.format("parquet").mode("overwrite").option("header", "true").save(tower_parquet_path)
 
     tower_locations_df = tower_locations.withColumn("tower_index", expr("row_number() over (order by tower_id) - 1"))
 
     # ---------- Network Logs ----------
-    network_logs = spark.range(5640000).select(
+    network_logs = spark.range(6000000).select(
         (rand() * tower_locations_df.count()).cast("int").alias("tower_index")
     ).join(
         tower_locations_df,
@@ -116,8 +113,7 @@ def generate_timestamp_data():
         (rand() * 100).alias("signal_strength"),
         (rand() * 10).alias("latency_ms"),
         random_timestamp_expr().alias("timestamp"),
-        # Added fields for equipment logs
-        (rand() * 5 + 95).alias("uptime"),  # percentage 95-100
+        (rand() * 5 + 95).alias("uptime"),
         expr("CASE WHEN rand() < 0.94 THEN NULL WHEN rand() < 0.5 THEN 'E001' ELSE 'E002' END").alias("error_codes")
     ).withColumn(
         "signal_strength",
@@ -129,32 +125,30 @@ def generate_timestamp_data():
     ).withColumn(
         "day", dayofmonth(col("timestamp"))
     ).withColumn(
-        # region derived deterministically from tower_id
         "region_index", pmod(spark_hash(col("tower_id")), lit(len(regions))).cast("int")
     ).withColumn(
         "region", expr(f"element_at(array({regions_sql_array}), region_index + 1)")
     ).filter(
         (col("year") == 2025) &
         (col("timestamp") >= "2025-07-01 00:00:00") &
-        (col("timestamp") <= "2025-08-17 23:59:59")
+        (col("timestamp") <= "2025-08-19 23:59:59")
     )
-    network_json_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
-    # Clean target and write one file per day (partitioned by year/month/day)
+    network_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
     def _clean_dbfs_path(dbfs_path: str):
         local = dbfs_path.replace("dbfs:", "/dbfs")
         if os.path.exists(local):
             shutil.rmtree(local)
 
-    _clean_dbfs_path(network_json_path)
+    _clean_dbfs_path(network_parquet_path)
     distinct_days_nw = [
         (r["year"], r["month"], r["day"]) for r in network_logs.select("year", "month", "day").distinct().collect()
     ]
     for y, m, d in distinct_days_nw:
-        day_path = f"{network_json_path}/year={y}/month={m}/day={d}"
+        day_path = f"{network_parquet_path}/year={y}/month={m}/day={d}"
         (network_logs
          .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
          .coalesce(1)
-         .write.format("json").mode("overwrite").save(day_path)
+         .write.format("parquet").mode("overwrite").save(day_path)
         )
 
     # ---------- Weather Data ----------
@@ -195,33 +189,8 @@ def generate_timestamp_data():
          .write.format("parquet").option("header", "true").mode("overwrite").save(day_path)
         )
 
-    # Also produce Weather Data as JSON with requested fields: location, temperature, precipitation, timestamp
-    weather_json = weather_data.join(
-        tower_locations.select("tower_id", "latitude", "longitude", "region"), on="tower_id", how="left"
-    ).select(
-        format_string("%.5f,%.5f", col("latitude"), col("longitude")).alias("location"),
-        col("temperature_c").alias("temperature"),
-        when(col("weather_condition") == lit("Rain"), rand() * 20)
-        .otherwise(rand() * 2)
-        .alias("precipitation"),
-        col("timestamp"),
-        col("year"), col("month"), col("day"), col("region")
-    )
-    weather_json_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/weather_data_json"
-    _clean_dbfs_path(weather_json_path)
-    distinct_days_wj = [
-        (r["year"], r["month"], r["day"]) for r in weather_json.select("year", "month", "day").distinct().collect()
-    ]
-    for y, m, d in distinct_days_wj:
-        day_path = f"{weather_json_path}/year={y}/month={m}/day={d}"
-        (weather_json
-         .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
-         .coalesce(1)
-         .write.format("json").mode("overwrite").save(day_path)
-        )
-
     # ---------- Customer Usage ----------
-    customer_usage = spark.range(5640000).select(
+    customer_usage = spark.range(6000000).select(
         col("id").cast("string").alias("customer_id"),
         (rand() * 1000).alias("data_usage_mb"),
         (rand() * 60).alias("call_duration_min"),
@@ -232,9 +201,8 @@ def generate_timestamp_data():
     ).filter(
         (year(col("timestamp")) == 2025) &
         (col("timestamp") >= "2025-07-01 00:00:00") &
-        (col("timestamp") <= "2025-08-17 23:59:59")
+        (col("timestamp") <= "2025-08-19 23:59:59")
     ).withColumn(
-        # Added standardized field names while retaining existing ones
         "data_usage", col("data_usage_mb")
     ).withColumn(
         "call_duration", col("call_duration_min")
@@ -272,17 +240,17 @@ def generate_timestamp_data():
     ).withColumn(
         "day", dayofmonth(col("start_time"))
     )
-    load_shedding_csv_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/load_shedding_schedules"
-    _clean_dbfs_path(load_shedding_csv_path)
+    load_shedding_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/load_shedding_schedules"
+    _clean_dbfs_path(load_shedding_parquet_path)
     distinct_days_ls = [
         (r["year"], r["month"], r["day"]) for r in load_shedding.select("year", "month", "day").distinct().collect()
     ]
     for y, m, d in distinct_days_ls:
-        day_path = f"{load_shedding_csv_path}/year={y}/month={m}/day={d}"
+        day_path = f"{load_shedding_parquet_path}/year={y}/month={m}/day={d}"
         (load_shedding
          .filter((col("year") == y) & (col("month") == m) & (col("day") == d))
          .coalesce(1)
-         .write.format("csv").option("header", "true").mode("overwrite").save(day_path)
+         .write.format("parquet").option("header", "true").mode("overwrite").save(day_path)
         )
 
     # ---------- Upload to GitHub ----------
@@ -320,12 +288,11 @@ def generate_timestamp_data():
 
                 next_idx += 1
 
-    upload_all_files_from_folder(tower_csv_path, "data/tower_locations")
-    upload_all_files_from_folder(network_json_path, "data/network_logs")
+    upload_all_files_from_folder(tower_parquet_path, "data/tower_locations")
+    upload_all_files_from_folder(network_parquet_path, "data/network_logs")
     upload_all_files_from_folder(weather_parquet_path, "data/weather_data")
-    upload_all_files_from_folder(weather_json_path, "data/weather_data_json")
     upload_all_files_from_folder(customer_parquet_path, "data/customer_usage")
-    upload_all_files_from_folder(load_shedding_csv_path, "data/load_shedding_schedules")
+    upload_all_files_from_folder(load_shedding_parquet_path, "data/load_shedding_schedules")
 
     return True
 
