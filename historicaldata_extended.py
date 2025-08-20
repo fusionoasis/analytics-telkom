@@ -8,6 +8,7 @@ import base64
 import os
 import shutil
 from datetime import datetime
+import time
 
 # GitHub configuration (expects to run in Databricks with the secret configured)
 GITHUB_TOKEN = dbutils.secrets.get(scope="databricksazure", key="github-pat-token")
@@ -42,49 +43,53 @@ def get_last_index_from_github(github_folder):
     return max(indices) if indices else -1
 
 
-def upload_to_github(file_path, github_path, commit_message):
-    """Upload or update a single file to GitHub repository via Contents API.
-    If the file exists, include its SHA to update in place. Uses the same filename as local.
-    """
+def upload_to_github_with_retry(file_path, github_path, commit_message, max_retries=5, retry_delay=30):
+    """Upload or update a single file to GitHub repository via Contents API with retry logic."""
     local_path = file_path.replace("dbfs:", "/dbfs")
     with open(local_path, "rb") as f:
         content = f.read()
-
     content_encoded = base64.b64encode(content).decode()
-
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3+json",
     }
-
-    # Try to get existing file SHA
-    sha = None
-    get_resp = requests.get(f"{GITHUB_API_URL}/{github_path}", headers=headers)
-    if get_resp.status_code == 200:
+    for attempt in range(max_retries):
         try:
-            sha = get_resp.json().get("sha")
-        except Exception:
+            # Try to get existing file SHA
             sha = None
-
-    payload = {
-        "message": commit_message,
-        "content": content_encoded,
-    }
-    if sha:
-        payload["sha"] = sha
-
-    response = requests.put(f"{GITHUB_API_URL}/{github_path}", json=payload, headers=headers)
-    return response.status_code in [200, 201]
+            get_resp = requests.get(f"{GITHUB_API_URL}/{github_path}", headers=headers)
+            if get_resp.status_code == 200:
+                try:
+                    sha = get_resp.json().get("sha")
+                except Exception:
+                    sha = None
+            payload = {
+                "message": commit_message,
+                "content": content_encoded,
+            }
+            if sha:
+                payload["sha"] = sha
+            response = requests.put(f"{GITHUB_API_URL}/{github_path}", json=payload, headers=headers)
+            if response.status_code in [200, 201]:
+                return True
+            else:
+                print(f"Upload failed (status {response.status_code}), attempt {attempt+1}/{max_retries}")
+        except requests.ConnectionError as e:
+            print(f"Connection error: {e}, attempt {attempt+1}/{max_retries}")
+        except Exception as e:
+            print(f"Unexpected error: {e}, attempt {attempt+1}/{max_retries}")
+        time.sleep(retry_delay)
+    return False
 
 
 def random_timestamp_expr():
-    """Generate random timestamp between 2025-07-01 and 2025-08-19."""
+    """Generate random timestamp between 2025-07-01 and 2025-08-20."""
     return expr(
         """
         timestampadd(
             SECOND,
             cast(rand() * 86400 as int),
-            date_add(to_date('2025-07-01'), cast(rand() * 50 as int))
+            date_add(to_date('2025-07-01'), cast(rand() * 51 as int))
         )
         """
     )
@@ -144,19 +149,16 @@ def generate_timestamp_data():
         root_local = dbfs_folder.replace("dbfs:", "/dbfs")
         if not os.path.isdir(root_local):
             return
-        # Collect only files that start with Spark's part prefix
         part_files = [fn for fn in os.listdir(root_local) if fn.startswith("part-") and os.path.isfile(os.path.join(root_local, fn))]
         if not part_files:
             return
-        part_files.sort()  # stable rename order
+        part_files.sort()
         for idx, fname in enumerate(part_files):
             target = f"part-{idx:05d}-tid.parquet"
             src = os.path.join(root_local, fname)
             dst = os.path.join(root_local, target)
-            # Skip if already in desired name
             if os.path.basename(src) == target:
                 continue
-            # Overwrite safely if a stale target exists
             if os.path.exists(dst):
                 os.remove(dst)
             os.replace(src, dst)
@@ -188,7 +190,7 @@ def generate_timestamp_data():
         .filter(
             (col("year") == 2025)
             & (col("timestamp") >= "2025-07-01 00:00:00")
-            & (col("timestamp") <= "2025-08-19 23:59:59")
+            & (col("timestamp") <= "2025-08-20 23:59:59")
         )
     )
     network_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
@@ -210,7 +212,6 @@ def generate_timestamp_data():
                 if fname.startswith("part-"):
                     os.replace(os.path.join(tmp_local, fname), os.path.join(root_local, fname))
             shutil.rmtree(tmp_local, ignore_errors=True)
-    # Normalize filenames to part-xxxxx-tid.parquet (0..N-1)
     _rename_parts_in_folder(network_parquet_path)
 
     # ---------- Weather Data ----------
@@ -267,7 +268,7 @@ def generate_timestamp_data():
         .filter(
             (year(col("timestamp")) == 2025)
             & (col("timestamp") >= "2025-07-01 00:00:00")
-            & (col("timestamp") <= "2025-08-19 23:59:59")
+            & (col("timestamp") <= "2025-08-20 23:59:59")
         )
         .withColumn("data_usage", col("data_usage_mb"))
         .withColumn("call_duration", col("call_duration_min"))
@@ -331,11 +332,9 @@ def generate_timestamp_data():
             shutil.rmtree(tmp_local, ignore_errors=True)
     _rename_parts_in_folder(load_shedding_parquet_path)
 
-    # =================== New datasets added below (preserving existing behavior) ===================
-
     # ---------- Customer Feedback ----------
     customer_feedback = (
-        spark.range(200000)
+        spark.range(1000000)
         .select(
             expr(
                 "element_at(array(" \
@@ -592,9 +591,8 @@ def generate_timestamp_data():
     _rename_parts_in_folder(crew_parquet_path)
 
     # ---------- Upload to GitHub ----------
-    def upload_all_files_from_folder(dbfs_folder, github_folder):
-        """Recursively upload all Spark part files, preserving partition directories.
-        Maintains per-folder part indexing in GitHub to avoid conflicts."""
+    def upload_all_files_from_folder(dbfs_folder, github_folder, delay_seconds=5, max_retries=5, retry_delay=60):
+        """Recursively upload all Spark part files, preserving partition directories. Throttles and retries uploads."""
         root_local = dbfs_folder.replace("dbfs:", "/dbfs")
         for dirpath, _, filenames in os.walk(root_local):
             part_files = sorted([fn for fn in filenames if fn.startswith("part-")])
@@ -605,19 +603,16 @@ def generate_timestamp_data():
             gh_subfolder = f"{github_folder}/{rel_dir}" if rel_dir != "." else github_folder
 
             for file in part_files:
-                # Use the exact local filename when uploading to GitHub
                 local_path = os.path.join(dirpath, file)
                 github_path = f"{gh_subfolder}/{file}"
-                upload_to_github(local_path, github_path, commit_msg)
+                upload_to_github_with_retry(local_path, github_path, commit_msg, max_retries=max_retries, retry_delay=retry_delay)
+                time.sleep(delay_seconds)
 
-    # Existing datasets
     upload_all_files_from_folder(tower_parquet_path, "data/tower_locations")
     upload_all_files_from_folder(network_parquet_path, "data/network_logs")
     upload_all_files_from_folder(weather_parquet_path, "data/weather_data")
     upload_all_files_from_folder(customer_parquet_path, "data/customer_usage")
     upload_all_files_from_folder(load_shedding_parquet_path, "data/load_shedding_schedules")
-
-    # New datasets
     upload_all_files_from_folder(feedback_parquet_path, "data/customer_feedback")
     upload_all_files_from_folder(imagery_parquet_path, "data/tower_imagery")
     upload_all_files_from_folder(vt_parquet_path, "data/voice_transcriptions")
