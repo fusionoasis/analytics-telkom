@@ -48,5 +48,6 @@
     { "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00046-tid.parquet", "p_sink_file": "part-00046-tid.parquet" },
     { "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00047-tid.parquet", "p_sink_file": "part-00047-tid.parquet" },
     { "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00048-tid.parquet", "p_sink_file": "part-00048-tid.parquet" },
-    { "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00049-tid.parquet", "p_sink_file": "part-00049-tid.parquet" }
+    { "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00049-tid.parquet", "p_sink_file": "part-00049-tid.parquet" },
+    { "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00050-tid.parquet", "p_sink_file": "part-00050-tid.parquet" }
 ]
