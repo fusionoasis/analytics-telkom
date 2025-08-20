@@ -191,7 +191,7 @@ def _clean_dbfs_path(dbfs_path: str):
 
 
 def generate_interval_data():
-    """Generate network logs, customer usage, and weather data for the previous 4-hour interval"""
+    """Generate data for the previous 4-hour interval and upload one file per dataset."""
     end_time = datetime.now()
     start_time = end_time - timedelta(hours=4)
 
@@ -232,7 +232,6 @@ def generate_interval_data():
         "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
     )
     network_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
-    # One file per interval: write to tmp, move single part to root
     tmp_nw = f"{network_path}/.tmp_interval_{int(end_time.timestamp())}"
     (network_logs
      .coalesce(1)
@@ -243,9 +242,7 @@ def generate_interval_data():
     os.makedirs(root_local, exist_ok=True)
     nw_local_file = ""
     if os.path.isdir(tmp_local):
-        # Determine next local index once per interval
         next_idx = get_last_index_from_local(root_local) + 1
-        # Find the single part file in the tmp output
         part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
         if part_files:
             src = os.path.join(tmp_local, part_files[0])
@@ -370,12 +367,241 @@ def generate_interval_data():
             os.replace(src, ls_local_file)
         shutil.rmtree(tmp_local, ignore_errors=True)
 
+    # === New Datasets (interval behavior, one file per interval) ===
+
+    # Customer Feedback
+    customer_feedback = spark.range(20000).select(
+        expr(
+            "element_at(array("
+            "'Network is slow in my area',"
+            "'Frequent dropped calls',"
+            "'No coverage inside my building',"
+            "'High latency during peak hours',"
+            "'Billing issue with last invoice',"
+            "'SIM card not working',"
+            "'App keeps crashing',"
+            "'Unexpected charges on my account',"
+            "'Activation is delayed',"
+            "'Roaming does not work'"
+            "), cast(rand() * 10 as int) + 1)"
+        ).alias("text"),
+        expr("round(rand() * 2 - 1, 3)").alias("sentiment_score"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+    ).withColumn(
+        "sentiment_label",
+        expr("CASE WHEN sentiment_score < -0.2 THEN 'negative' WHEN sentiment_score > 0.2 THEN 'positive' ELSE 'neutral' END")
+    ).withColumn("year", year(col("timestamp")))
+    .withColumn("month", month(col("timestamp")))
+    .withColumn("day", dayofmonth(col("timestamp")))
+    cf_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_feedback"
+    tmp_cf = f"{cf_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (customer_feedback
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_cf)
+    )
+    tmp_local = tmp_cf.replace("dbfs:", "/dbfs")
+    root_local = cf_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    cf_local_file = ""
+    if os.path.isdir(tmp_local):
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            cf_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, cf_local_file)
+        shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # Tower Imagery
+    tower_imagery = tower_locations_df.select(
+        col("tower_id"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+    ).withColumn(
+        "image_path",
+        expr("concat('dbfs:/mnt/dlstelkomnetworkprod/assets/tower_images/', tower_id, '/', cast(unix_timestamp(timestamp) as string), '.jpg')")
+    ).withColumn(
+        "condition_label",
+        expr("element_at(array('OK','Minor','Critical'), cast(rand() * 3 as int) + 1)")
+    ).withColumn("year", year(col("timestamp")))
+    .withColumn("month", month(col("timestamp")))
+    .withColumn("day", dayofmonth(col("timestamp")))
+    ti_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_imagery"
+    tmp_ti = f"{ti_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (tower_imagery
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_ti)
+    )
+    tmp_local = tmp_ti.replace("dbfs:", "/dbfs")
+    root_local = ti_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    ti_local_file = ""
+    if os.path.isdir(tmp_local):
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            ti_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, ti_local_file)
+        shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # Voice Transcriptions
+    voice_transcriptions = spark.range(6000).select(
+        col("id").cast("string").alias("technician_id"),
+        expr(
+            "element_at(array(" 
+            "'Start site inspection'," 
+            "'Check signal levels'," 
+            "'Replace faulty antenna'," 
+            "'Confirm power status'," 
+            "'Log maintenance complete'," 
+            "'Escalate to network ops'," 
+            "'Verify backhaul link'," 
+            "'Capture tower imagery'," 
+            "'Run diagnostic test'," 
+            "'Close the ticket'" 
+            "), cast(rand() * 10 as int) + 1)"
+        ).alias("transcription"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+    ).withColumn("year", year(col("timestamp")))
+    .withColumn("month", month(col("timestamp")))
+    .withColumn("day", dayofmonth(col("timestamp")))
+    vt_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/voice_transcriptions"
+    tmp_vt = f"{vt_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (voice_transcriptions
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_vt)
+    )
+    tmp_local = tmp_vt.replace("dbfs:", "/dbfs")
+    root_local = vt_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    vt_local_file = ""
+    if os.path.isdir(tmp_local):
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            vt_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, vt_local_file)
+        shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # Tower Connectivity (each tower connects to two neighbors)
+    neighbor_map = tower_locations_df.select(
+        col("tower_id").alias("dst_tower_id"),
+        expr("row_number() over (order by tower_id) - 1").alias("neighbor_index")
+    )
+    src_with_neighbors = tower_locations_df.select(
+        col("tower_id").alias("src_tower_id"),
+        expr("row_number() over (order by tower_id) - 1").alias("tower_index")
+    )
+    total_towers = neighbor_map.count()
+    edges_idx = src_with_neighbors.select(
+        col("src_tower_id"), expr(f"(tower_index + 1) % {total_towers}").alias("neighbor_index")
+    ).union(
+        src_with_neighbors.select(
+            col("src_tower_id"), expr(f"(tower_index + 2) % {total_towers}").alias("neighbor_index")
+        )
+    )
+    tower_connectivity = edges_idx.join(neighbor_map, on="neighbor_index", how="left").select(
+        col("src_tower_id"),
+        col("dst_tower_id"),
+        (rand() * 100).alias("signal_quality"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+    ).withColumn("year", year(col("timestamp")))
+    .withColumn("month", month(col("timestamp")))
+    .withColumn("day", dayofmonth(col("timestamp")))
+    tc_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_connectivity"
+    tmp_tc = f"{tc_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (tower_connectivity
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_tc)
+    )
+    tmp_local = tmp_tc.replace("dbfs:", "/dbfs")
+    root_local = tc_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    tc_local_file = ""
+    if os.path.isdir(tmp_local):
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            tc_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, tc_local_file)
+        shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # Tower Capacity
+    tower_capacity = tower_locations_df.select(
+        col("tower_id"),
+        (rand() * 900 + 100).alias("capacity_mbps"),
+        (rand() * 80 + 10).alias("utilization_percent"),
+        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+    ).withColumn("year", year(col("timestamp")))
+    .withColumn("month", month(col("timestamp")))
+    .withColumn("day", dayofmonth(col("timestamp")))
+    tcap_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_capacity"
+    tmp_tcap = f"{tcap_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (tower_capacity
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_tcap)
+    )
+    tmp_local = tmp_tcap.replace("dbfs:", "/dbfs")
+    root_local = tcap_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    tcap_local_file = ""
+    if os.path.isdir(tmp_local):
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            tcap_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, tcap_local_file)
+        shutil.rmtree(tmp_local, ignore_errors=True)
+
+    # Maintenance Crew
+    maintenance_crew = spark.range(2000).select(
+        col("id").cast("string").alias("crew_id"),
+        expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), cast(rand() * 9 as int) + 1)").alias("region"),
+        (rand() * 7 + 22).alias("latitude"),
+        (rand() * 9 + 16).alias("longitude"),
+        expr("rand() < 0.7").alias("available"),
+        random_timestamp_in_interval(start_time, end_time).alias("shift_start")
+    ).withColumn(
+        "shift_end", expr("timestampadd(HOUR, 8, shift_start)")
+    ).withColumn("year", year(col("shift_start")))
+    .withColumn("month", month(col("shift_start")))
+    .withColumn("day", dayofmonth(col("shift_start")))
+    mc_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/maintenance_crew"
+    tmp_mc = f"{mc_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (maintenance_crew
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_mc)
+    )
+    tmp_local = tmp_mc.replace("dbfs:", "/dbfs")
+    root_local = mc_path.replace("dbfs:", "/dbfs")
+    os.makedirs(root_local, exist_ok=True)
+    mc_local_file = ""
+    if os.path.isdir(tmp_local):
+        next_idx = get_last_index_from_local(root_local) + 1
+        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
+        if part_files:
+            src = os.path.join(tmp_local, part_files[0])
+            mc_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
+            os.replace(src, mc_local_file)
+        shutil.rmtree(tmp_local, ignore_errors=True)
+
     # === Upload to GitHub ===
     commit_msg = f"Data update for interval {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}"
     upload_file_with_github_index(nw_local_file, "data/network_logs", commit_msg)
     upload_file_with_github_index(cu_local_file, "data/customer_usage", commit_msg)
     upload_file_with_github_index(w_local_file, "data/weather_data", commit_msg)
     upload_file_with_github_index(ls_local_file, "data/load_shedding_schedules", commit_msg)
+
+    # New dataset uploads
+    upload_file_with_github_index(cf_local_file, "data/customer_feedback", commit_msg)
+    upload_file_with_github_index(ti_local_file, "data/tower_imagery", commit_msg)
+    upload_file_with_github_index(vt_local_file, "data/voice_transcriptions", commit_msg)
+    upload_file_with_github_index(tc_local_file, "data/tower_connectivity", commit_msg)
+    upload_file_with_github_index(tcap_local_file, "data/tower_capacity", commit_msg)
+    upload_file_with_github_index(mc_local_file, "data/maintenance_crew", commit_msg)
 
     return True
 
