@@ -8,13 +8,131 @@ import base64
 import os
 import shutil
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 # === GitHub Configuration ===
-GITHUB_TOKEN = dbutils.secrets.get(scope="databricksazure", key="github-pat-token")
 GITHUB_REPO = "fusionoasis/analytics-data"
 GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/contents"
 
 spark = SparkSession.builder.getOrCreate()
+
+# Provide a dbutils shim for non-Databricks environments and avoid NameError in linters
+try:  # noqa: SIM105
+    dbutils  # type: ignore[name-defined]
+except NameError:  # pragma: no cover - only for local dev
+    try:
+        from pyspark.dbutils import DBUtils  # type: ignore
+        dbutils = DBUtils(spark)  # type: ignore
+    except Exception:  # fallback stub
+        class _DBFS:
+            def mkdirs(self, *args, **kwargs):
+                return None
+            def ls(self, *args, **kwargs):
+                return []
+            def rm(self, *args, **kwargs):
+                return None
+            def mv(self, *args, **kwargs):
+                return None
+            def cp(self, *args, **kwargs):
+                return None
+        class _Secrets:
+            def get(self, *args, **kwargs):
+                raise RuntimeError("dbutils.secrets not available")
+        class _DBUtils:
+            fs = _DBFS()
+            secrets = _Secrets()
+        dbutils = _DBUtils()  # type: ignore
+
+def _get_github_token() -> str:
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_PAT")
+    if token:
+        return token
+    try:
+        return dbutils.secrets.get(scope="databricksazure", key="github-pat-token")  # type: ignore[attr-defined]
+    except Exception:
+        return ""
+
+GITHUB_TOKEN = _get_github_token()
+
+# === Storage base (ABFSS) ===
+RAW_BASE = "abfss://raw@dlstelkomnetworkprod.dfs.core.windows.net"
+
+# === Path/FS helpers (support abfss/dbfs) ===
+def _is_abfss(path: str) -> bool:
+    return isinstance(path, str) and path.startswith("abfss:")
+
+def _is_dbfs(path: str) -> bool:
+    return isinstance(path, str) and path.startswith("dbfs:")
+
+def _ensure_dir(path: str):
+    try:
+        dbutils.fs.mkdirs(path)
+    except Exception:
+        pass
+
+def _list_parts(path: str):
+    try:
+        return [fi for fi in dbutils.fs.ls(path) if fi.name.startswith("part-")]
+    except Exception:
+        return []
+
+def _rm_path(path: str):
+    try:
+        if _is_abfss(path) or _is_dbfs(path):
+            dbutils.fs.rm(path, True)
+        else:
+            local = path.replace("dbfs:", "/dbfs")
+            if os.path.exists(local):
+                shutil.rmtree(local, ignore_errors=True)
+    except Exception:
+        pass
+
+def _get_last_index_from_remote(folder_path: str) -> int:
+    try:
+        files = dbutils.fs.ls(folder_path)
+    except Exception:
+        return -1
+    max_idx = -1
+    for fi in files:
+        name = fi.name.rstrip('/')
+        if not name.startswith("part-"):
+            continue
+        try:
+            core = name.split("-")[1]
+            idx = int(core)
+            max_idx = max(max_idx, idx)
+        except Exception:
+            continue
+    return max_idx
+
+def _move_single_part_from_tmp(tmp_dir: str, dest_dir: str) -> str:
+    """Move the single part file from tmp_dir into dest_dir with next sequential index.
+    Returns the destination file path (abfss/dbfs) or empty string if none.
+    """
+    _ensure_dir(dest_dir)
+    parts = _list_parts(tmp_dir)
+    if not parts:
+        _rm_path(tmp_dir)
+        return ""
+    next_idx = _get_last_index_from_remote(dest_dir) + 1
+    src = parts[0].path
+    ext = os.path.splitext(parts[0].name)[1] or ".parquet"
+    dest = f"{dest_dir}/part-{next_idx:05d}-tid{ext}"
+    dbutils.fs.mv(src, dest, True)
+    _rm_path(tmp_dir)
+    return dest
+
+def _to_local_for_upload(path: str) -> str:
+    """Ensure file is available on local driver filesystem for upload (returns /dbfs/... path)."""
+    if _is_dbfs(path):
+        return path.replace("dbfs:", "/dbfs")
+    if _is_abfss(path):
+        tmp_dbfs = f"dbfs:/tmp/github_uploads/{uuid4().hex}-{os.path.basename(path)}"
+        _ensure_dir("dbfs:/tmp/github_uploads")
+        dbutils.fs.cp(path, tmp_dbfs, True)
+        return tmp_dbfs.replace("dbfs:", "/dbfs")
+    # Fallback: assume it's already local
+    return path
 
 # === GitHub Upload Helpers ===
 def get_last_index_from_github(github_folder):
@@ -46,7 +164,7 @@ def upload_to_github(file_path, github_path, commit_message):
 
     If the file already exists, include its SHA to perform an update; otherwise create it.
     """
-    local_path = file_path.replace("dbfs:", "/dbfs")
+    local_path = _to_local_for_upload(file_path)
     with open(local_path, "rb") as f:
         content = f.read()
     content_encoded = base64.b64encode(content).decode()
@@ -73,11 +191,13 @@ def upload_to_github(file_path, github_path, commit_message):
     return response.status_code in [200, 201]
 
 def get_last_index_from_local(local_folder: str) -> int:
-    """Read local DBFS-mounted folder and find highest index in files named part-00000-tid.*"""
-    if not os.path.isdir(local_folder):
+    """Deprecated: retained for compatibility. Not used with abfss."""
+    try:
+        names = os.listdir(local_folder)
+    except Exception:
         return -1
     max_idx = -1
-    for name in os.listdir(local_folder):
+    for name in names:
         if not name.startswith("part-"):
             continue
         try:
@@ -103,52 +223,8 @@ def upload_file_with_github_index(local_file_path: str, github_folder: str, comm
     return upload_to_github(local_file_path, github_path, commit_msg)
 
 def upload_all_files_from_folder(dbfs_folder, github_folder, commit_msg, subdirs=None):
-    """Recursively upload Spark output files, renaming locally and preserving partitions.
-    - Only processes fresh Spark part files (skips already-renamed files containing '-tid').
-    - If subdirs is provided, restricts uploads to those relative subdirectories.
-    Maintains per-folder indexing in GitHub to avoid collisions.
-    """
-    root_local = dbfs_folder.replace("dbfs:", "/dbfs")
-
-    # Build list of directories to traverse
-    dirs_to_walk = []
-    if subdirs:
-        for rel in subdirs:
-            abs_dir = os.path.join(root_local, rel).replace("/", os.sep)
-            if os.path.isdir(abs_dir):
-                dirs_to_walk.append(abs_dir)
-    else:
-        dirs_to_walk = [root_local]
-
-    for start_dir in dirs_to_walk:
-        for dirpath, _, filenames in os.walk(start_dir):
-            part_files = sorted([
-                fn for fn in filenames
-                if fn.startswith("part-") and "-tid" not in fn
-            ])
-            if not part_files:
-                continue
-
-            rel_dir = os.path.relpath(dirpath, root_local).replace("\\", "/")
-            gh_subfolder = f"{github_folder}/{rel_dir}" if rel_dir != "." else github_folder
-
-            last_idx = get_last_index_from_github(gh_subfolder)
-            next_idx = last_idx + 1
-
-            for file in part_files:
-                file_ext = os.path.splitext(file)[1]
-                new_name = f"part-{next_idx:05d}-tid{file_ext}"
-
-                old_path = os.path.join(dirpath, file)
-                new_path = os.path.join(dirpath, new_name)
-
-                if not os.path.exists(new_path):
-                    os.rename(old_path, new_path)
-
-                github_path = f"{gh_subfolder}/{new_name}"
-                upload_to_github(new_path, github_path, commit_msg)
-
-                next_idx += 1
+    """Legacy helper not used in abfss flow. Kept for compatibility."""
+    return
 
 # === Tower Data Generation ===
 def generate_tower_locations_once():
@@ -168,10 +244,13 @@ def generate_tower_locations_once():
     ).withColumn(
         "region", expr(f"element_at(array({regions_sql_array}), region_index + 1)")
     )
-    tower_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations"
+    tower_path = f"{RAW_BASE}/tower_locations"
     _clean_dbfs_path(tower_path)
-    tower_locations.coalesce(1).write.format("parquet").mode("overwrite").save(tower_path)
-    upload_all_files_from_folder(tower_path, "data/tower_locations", "Initial tower locations dataset")
+    tmp_tower = f"{tower_path}/.tmp_init_{int(datetime.now().timestamp())}"
+    tower_locations.coalesce(1).write.format("parquet").mode("overwrite").save(tmp_tower)
+    dest_file = _move_single_part_from_tmp(tmp_tower, tower_path)
+    if dest_file:
+        upload_file_with_github_index(dest_file, "data/tower_locations", "Initial tower locations dataset")
     return tower_locations
 
 # === Timestamp Utilities ===
@@ -183,9 +262,7 @@ def random_timestamp_in_interval(start_time, end_time):
 
 # === Main Data Generation ===
 def _clean_dbfs_path(dbfs_path: str):
-    local = dbfs_path.replace("dbfs:", "/dbfs")
-    if os.path.exists(local):
-        shutil.rmtree(local)
+    _rm_path(dbfs_path)
 
 
 def generate_interval_data():
@@ -195,7 +272,7 @@ def generate_interval_data():
 
     # Load or generate tower locations
     try:
-        tower_locations = spark.read.format("parquet").load("dbfs:/mnt/dlstelkomnetworkprod/raw/tower_locations")
+        tower_locations = spark.read.format("parquet").load(f"{RAW_BASE}/tower_locations")
         tower_locations = tower_locations.limit(15000)
     except:
         tower_locations = generate_tower_locations_once()
@@ -229,24 +306,13 @@ def generate_interval_data():
     ).withColumn(
         "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
     )
-    network_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/network_logs"
+    network_path = f"{RAW_BASE}/network_logs"
     tmp_nw = f"{network_path}/.tmp_interval_{int(end_time.timestamp())}"
     (network_logs
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_nw)
     )
-    tmp_local = tmp_nw.replace("dbfs:", "/dbfs")
-    root_local = network_path.replace("dbfs:", "/dbfs")
-    os.makedirs(root_local, exist_ok=True)
-    nw_local_file = ""
-    if os.path.isdir(tmp_local):
-        next_idx = get_last_index_from_local(root_local) + 1
-        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
-        if part_files:
-            src = os.path.join(tmp_local, part_files[0])
-            nw_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
-            os.replace(src, nw_local_file)
-        shutil.rmtree(tmp_local, ignore_errors=True)
+    nw_remote_file = _move_single_part_from_tmp(tmp_nw, network_path)
 
     # === Customer Usage ===
     customer_usage = spark.range(30000).select(
@@ -268,24 +334,13 @@ def generate_interval_data():
     ).withColumn(
         "day", dayofmonth(col("timestamp"))
     )
-    customer_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_usage"
+    customer_path = f"{RAW_BASE}/customer_usage"
     tmp_cu = f"{customer_path}/.tmp_interval_{int(end_time.timestamp())}"
     (customer_usage
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_cu)
     )
-    tmp_local = tmp_cu.replace("dbfs:", "/dbfs")
-    root_local = customer_path.replace("dbfs:", "/dbfs")
-    os.makedirs(root_local, exist_ok=True)
-    cu_local_file = ""
-    if os.path.isdir(tmp_local):
-        next_idx = get_last_index_from_local(root_local) + 1
-        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
-        if part_files:
-            src = os.path.join(tmp_local, part_files[0])
-            cu_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
-            os.replace(src, cu_local_file)
-        shutil.rmtree(tmp_local, ignore_errors=True)
+    cu_remote_file = _move_single_part_from_tmp(tmp_cu, customer_path)
 
     # === Weather Data ===
     tower_dates = network_logs.select("tower_id", "timestamp").distinct()
@@ -314,67 +369,50 @@ def generate_interval_data():
     ).withColumn(
         "region", expr("element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), region_index + 1)")
     )
-    weather_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/weather_data"
+    weather_path = f"{RAW_BASE}/weather_data"
     tmp_w = f"{weather_path}/.tmp_interval_{int(end_time.timestamp())}"
     (weather_data
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_w)
     )
-    tmp_local = tmp_w.replace("dbfs:", "/dbfs")
-    root_local = weather_path.replace("dbfs:", "/dbfs")
-    os.makedirs(root_local, exist_ok=True)
-    w_local_file = ""
-    if os.path.isdir(tmp_local):
-        next_idx = get_last_index_from_local(root_local) + 1
-        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
-        if part_files:
-            src = os.path.join(tmp_local, part_files[0])
-            w_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
-            os.replace(src, w_local_file)
-        shutil.rmtree(tmp_local, ignore_errors=True)
+    w_remote_file = _move_single_part_from_tmp(tmp_w, weather_path)
 
     # Customer Feedback
-    customer_feedback = spark.range(20000).select(
-        expr(
-            "element_at(array("
-            "'Network is slow in my area',"
-            "'Frequent dropped calls',"
-            "'No coverage inside my building',"
-            "'High latency during peak hours',"
-            "'Billing issue with last invoice',"
-            "'SIM card not working',"
-            "'App keeps crashing',"
-            "'Unexpected charges on my account',"
-            "'Activation is delayed',"
-            "'Roaming does not work'"
-            "), cast(rand() * 10 as int) + 1)"
-        ).alias("text"),
-        expr("round(rand() * 2 - 1, 3)").alias("sentiment_score"),
-        random_timestamp_in_interval(start_time, end_time).alias("timestamp")
-    ).withColumn(
-        "sentiment_label",
-        expr("CASE WHEN sentiment_score < -0.2 THEN 'negative' WHEN sentiment_score > 0.2 THEN 'positive' ELSE 'neutral' END")
-    ).withColumn("year", year(col("timestamp")))
-    .withColumn("month", month(col("timestamp")))
-    .withColumn("day", dayofmonth(col("timestamp")))
-    cf_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_feedback"
+    customer_feedback = (
+        spark.range(20000).select(
+            expr(
+                "element_at(array(" 
+                "'Network is slow in my area',"
+                "'Frequent dropped calls',"
+                "'No coverage inside my building',"
+                "'High latency during peak hours',"
+                "'Billing issue with last invoice',"
+                "'SIM card not working',"
+                "'App keeps crashing',"
+                "'Unexpected charges on my account',"
+                "'Activation is delayed',"
+                "'Roaming does not work'"
+                "), cast(rand() * 10 as int) + 1)"
+            ).alias("text"),
+            expr("round(rand() * 2 - 1, 3)").alias("sentiment_score"),
+            random_timestamp_in_interval(start_time, end_time).alias("timestamp")
+        )
+        .withColumn(
+            "sentiment_label",
+            expr("CASE WHEN sentiment_score < -0.2 THEN 'negative' WHEN sentiment_score > 0.2 THEN 'positive' ELSE 'neutral' END")
+        )
+        .withColumn("year", year(col("timestamp")))
+        .withColumn("month", month(col("timestamp")))
+        .withColumn("day", dayofmonth(col("timestamp")))
+    )
+    
+    cf_path = f"{RAW_BASE}/customer_feedback"
     tmp_cf = f"{cf_path}/.tmp_interval_{int(end_time.timestamp())}"
     (customer_feedback
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_cf)
     )
-    tmp_local = tmp_cf.replace("dbfs:", "/dbfs")
-    root_local = cf_path.replace("dbfs:", "/dbfs")
-    os.makedirs(root_local, exist_ok=True)
-    cf_local_file = ""
-    if os.path.isdir(tmp_local):
-        next_idx = get_last_index_from_local(root_local) + 1
-        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
-        if part_files:
-            src = os.path.join(tmp_local, part_files[0])
-            cf_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
-            os.replace(src, cf_local_file)
-        shutil.rmtree(tmp_local, ignore_errors=True)
+    cf_remote_file = _move_single_part_from_tmp(tmp_cf, cf_path)
 
     # Voice Transcriptions
     voice_transcriptions = spark.range(6000).select(
@@ -394,35 +432,25 @@ def generate_interval_data():
             "), cast(rand() * 10 as int) + 1)"
         ).alias("transcription"),
         random_timestamp_in_interval(start_time, end_time).alias("timestamp")
-    ).withColumn("year", year(col("timestamp")))
-    .withColumn("month", month(col("timestamp")))
+    ).withColumn("year", year(col("timestamp"))) \
+    .withColumn("month", month(col("timestamp"))) \
     .withColumn("day", dayofmonth(col("timestamp")))
-    vt_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/voice_transcriptions"
+    
+    vt_path = f"{RAW_BASE}/voice_transcriptions"
     tmp_vt = f"{vt_path}/.tmp_interval_{int(end_time.timestamp())}"
     (voice_transcriptions
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_vt)
     )
-    tmp_local = tmp_vt.replace("dbfs:", "/dbfs")
-    root_local = vt_path.replace("dbfs:", "/dbfs")
-    os.makedirs(root_local, exist_ok=True)
-    vt_local_file = ""
-    if os.path.isdir(tmp_local):
-        next_idx = get_last_index_from_local(root_local) + 1
-        part_files = [f for f in os.listdir(tmp_local) if f.startswith("part-")]
-        if part_files:
-            src = os.path.join(tmp_local, part_files[0])
-            vt_local_file = os.path.join(root_local, f"part-{next_idx:05d}-tid.parquet")
-            os.replace(src, vt_local_file)
-        shutil.rmtree(tmp_local, ignore_errors=True)
+    vt_remote_file = _move_single_part_from_tmp(tmp_vt, vt_path)
 
     # === Upload to GitHub ===
     commit_msg = f"Data update for interval {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}"
-    upload_file_with_github_index(nw_local_file, "data/network_logs", commit_msg)
-    upload_file_with_github_index(cu_local_file, "data/customer_usage", commit_msg)
-    upload_file_with_github_index(w_local_file, "data/weather_data", commit_msg)
-    upload_file_with_github_index(cf_local_file, "data/customer_feedback", commit_msg)
-    upload_file_with_github_index(vt_local_file, "data/voice_transcriptions", commit_msg)
+    upload_file_with_github_index(nw_remote_file, "data/network_logs", commit_msg)
+    upload_file_with_github_index(cu_remote_file, "data/customer_usage", commit_msg)
+    upload_file_with_github_index(w_remote_file, "data/weather_data", commit_msg)
+    upload_file_with_github_index(cf_remote_file, "data/customer_feedback", commit_msg)
+    upload_file_with_github_index(vt_remote_file, "data/voice_transcriptions", commit_msg)
 
     return True
 

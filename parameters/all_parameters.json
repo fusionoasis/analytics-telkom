@@ -1,0 +1,2557 @@
+[
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00000-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00001-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00002-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00003-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00004-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00005-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00006-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00007-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00008-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00009-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00010-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00011-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00012-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00013-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00014-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00015-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00016-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00017-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00018-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00019-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00020-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00021-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00022-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00023-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00024-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00025-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00026-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00027-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00028-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00029-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00030-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00031-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00032-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00033-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00034-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00035-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00036-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00037-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00038-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00039-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00040-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00041-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00042-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00043-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00044-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00045-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00046-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00047-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00048-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00049-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_feedback/part-00050-tid.parquet",
+    "p_sink_folder": "customer_feedback",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00000-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00001-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00002-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00003-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00004-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00005-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00006-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00007-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00008-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00009-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00010-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00011-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00012-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00013-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00014-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00015-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00016-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00017-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00018-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00019-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00020-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00021-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00022-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00023-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00024-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00025-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00026-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00027-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00028-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00029-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00030-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00031-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00032-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00033-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00034-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00035-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00036-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00037-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00038-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00039-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00040-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00041-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00042-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00043-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00044-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00045-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00046-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00047-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00048-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00049-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/customer_usage/part-00050-tid.parquet",
+    "p_sink_folder": "customer_usage",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00000-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00001-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00002-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00003-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00004-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00005-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00006-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00007-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00008-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00009-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00010-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00011-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00012-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00013-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00014-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00015-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00016-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00017-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00018-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00019-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00020-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00021-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00022-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00023-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00024-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00025-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00026-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00027-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00028-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00029-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00030-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00031-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00032-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00033-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00034-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00035-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00036-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00037-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00038-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00039-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00040-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00041-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00042-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00043-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00044-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00045-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00046-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00047-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00048-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00049-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/load_shedding_schedules/part-00050-tid.parquet",
+    "p_sink_folder": "load_shedding_schedules",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00000-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00001-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00002-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00003-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00004-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00005-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00006-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00007-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00008-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00009-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00010-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00011-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00012-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00013-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00014-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00015-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00016-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00017-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00018-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00019-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00020-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00021-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00022-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00023-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00024-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00025-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00026-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00027-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00028-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00029-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00030-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00031-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00032-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00033-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00034-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00035-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00036-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00037-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00038-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00039-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00040-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00041-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00042-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00043-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00044-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00045-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00046-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00047-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00048-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00049-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/maintenance_crew/part-00050-tid.parquet",
+    "p_sink_folder": "maintenance_crew",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00000-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00001-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00002-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00003-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00004-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00005-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00006-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00007-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00008-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00009-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00010-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00011-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00012-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00013-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00014-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00015-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00016-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00017-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00018-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00019-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00020-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00021-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00022-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00023-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00024-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00025-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00026-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00027-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00028-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00029-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00030-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00031-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00032-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00033-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00034-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00035-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00036-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00037-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00038-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00039-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00040-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00041-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00042-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00043-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00044-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00045-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00046-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00047-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00048-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00049-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/network_logs/part-00050-tid.parquet",
+    "p_sink_folder": "network_logs",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00000-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00001-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00002-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00003-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00004-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00005-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00006-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00007-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00008-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00009-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00010-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00011-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00012-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00013-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00014-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00015-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00016-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00017-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00018-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00019-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00020-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00021-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00022-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00023-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00024-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00025-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00026-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00027-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00028-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00029-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00030-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00031-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00032-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00033-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00034-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00035-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00036-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00037-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00038-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00039-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00040-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00041-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00042-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00043-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00044-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00045-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00046-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00047-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00048-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00049-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_capacity/part-00050-tid.parquet",
+    "p_sink_folder": "tower_capacity",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00000-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00001-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00002-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00003-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00004-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00005-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00006-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00007-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00008-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00009-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00010-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00011-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00012-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00013-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00014-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00015-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00016-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00017-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00018-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00019-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00020-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00021-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00022-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00023-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00024-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00025-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00026-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00027-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00028-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00029-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00030-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00031-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00032-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00033-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00034-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00035-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00036-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00037-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00038-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00039-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00040-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00041-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00042-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00043-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00044-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00045-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00046-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00047-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00048-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00049-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_connectivity/part-00050-tid.parquet",
+    "p_sink_folder": "tower_connectivity",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00000-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00001-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00002-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00003-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00004-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00005-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00006-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00007-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00008-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00009-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00010-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00011-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00012-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00013-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00014-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00015-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00016-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00017-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00018-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00019-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00020-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00021-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00022-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00023-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00024-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00025-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00026-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00027-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00028-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00029-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00030-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00031-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00032-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00033-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00034-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00035-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00036-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00037-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00038-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00039-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00040-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00041-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00042-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00043-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00044-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00045-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00046-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00047-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00048-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00049-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_imagery/part-00050-tid.parquet",
+    "p_sink_folder": "tower_imagery",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/tower_locations/part-00000-tid.parquet",
+    "p_sink_folder": "tower_locations",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00000-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00001-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00002-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00003-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00004-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00005-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00006-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00007-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00008-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00009-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00010-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00011-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00012-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00013-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00014-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00015-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00016-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00017-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00018-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00019-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00020-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00021-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00022-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00023-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00024-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00025-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00026-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00027-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00028-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00029-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00030-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00031-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00032-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00033-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00034-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00035-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00036-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00037-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00038-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00039-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00040-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00041-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00042-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00043-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00044-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00045-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00046-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00047-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00048-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00049-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/voice_transcriptions/part-00050-tid.parquet",
+    "p_sink_folder": "voice_transcriptions",
+    "p_sink_file": "part-00050-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00000-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00000-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00001-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00001-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00002-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00002-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00003-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00003-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00004-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00004-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00005-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00005-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00006-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00006-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00007-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00007-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00008-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00008-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00009-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00009-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00010-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00010-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00011-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00011-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00012-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00012-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00013-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00013-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00014-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00014-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00015-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00015-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00016-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00016-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00017-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00017-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00018-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00018-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00019-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00019-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00020-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00020-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00021-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00021-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00022-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00022-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00023-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00023-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00024-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00024-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00025-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00025-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00026-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00026-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00027-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00027-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00028-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00028-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00029-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00029-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00030-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00030-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00031-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00031-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00032-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00032-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00033-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00033-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00034-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00034-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00035-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00035-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00036-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00036-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00037-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00037-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00038-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00038-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00039-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00039-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00040-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00040-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00041-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00041-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00042-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00042-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00043-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00043-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00044-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00044-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00045-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00045-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00046-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00046-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00047-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00047-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00048-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00048-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00049-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00049-tid.parquet"
+  },
+  {
+    "p_rel_url": "fusionoasis/analytics-telkom/blob/main/data/weather_data/part-00050-tid.parquet",
+    "p_sink_folder": "weather_data",
+    "p_sink_file": "part-00050-tid.parquet"
+  }
+]

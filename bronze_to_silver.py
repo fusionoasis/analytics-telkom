@@ -45,17 +45,87 @@ udf_dew = udf(dew_point_c, DoubleType())
 
 
 class TelkomBronzeToSilver:
-    def __init__(self, base_path="/mnt/dlstelkomnetworkprod"):
-        self.base_path = base_path
-        self.bronze_path = f"{base_path}/bronze"
-        self.silver_path = f"{base_path}/silver"
-        self.catalog = "telkom_analytics"
-        self.timezone = "Africa/Johannesburg"
+    def __init__(self, base_path=None, bronze_external_location: str = "bronze-layer", silver_base_path=None, silver_external_location: str = "silver-layer"):
+        # Normalize base path to include a cloud/DBFS scheme for SQL compatibility
+        def _normalize_base(p: str) -> str:
+            if p.startswith(("dbfs:/", "abfss://", "s3://", "wasbs://")):
+                return p
+            if p.startswith("/"):
+                return f"dbfs:{p}"
+            return p
+
+        self.bronze_external_location = bronze_external_location
+        self.silver_external_location = silver_external_location
+
+        # Prefer Unity Catalog semantics when available; fall back silently if not
         if spark is None:
             raise RuntimeError("Databricks global 'spark' session not available. Run this on Databricks.")
+
+        # Set Spark session timezone
+        # Store all timestamps as UTC; convert inputs from Africa/Johannesburg to UTC downstream.
         spark.conf.set("spark.sql.session.timeZone", "UTC")
-        spark.sql(f"CREATE DATABASE IF NOT EXISTS {self.catalog} LOCATION '{self.silver_path}'")
-        spark.sql(f"USE {self.catalog}")
+
+        # Resolve bronze and silver roots independently. Prefer UC External Locations; allow explicit overrides.
+        def _resolve_external_location(loc_name: str):
+            try:
+                if not loc_name:
+                    return None
+                df = spark.sql(f"DESCRIBE EXTERNAL LOCATION `{loc_name}`")
+                if "url" in df.columns:
+                    row = df.limit(1).collect()[0]
+                    return str(row["url"]).rstrip("/")
+                # Older style key/value rows
+                for r in df.collect():
+                    for k in ("url", "URL"):
+                        if hasattr(r, k):
+                            return str(getattr(r, k)).rstrip("/")
+            except Exception:
+                return None
+
+        # Bronze root
+        bronze_root = None
+        if base_path:
+            bronze_root = _normalize_base(str(base_path).rstrip("/"))
+        else:
+            bronze_root = _resolve_external_location(self.bronze_external_location)
+        if not bronze_root:
+            # Final fallback for non-UC local mounts
+            bronze_root = _normalize_base("/mnt/dlstelkomnetworkprod/bronze")
+
+        # Silver root
+        silver_root = None
+        if silver_base_path:
+            silver_root = _normalize_base(str(silver_base_path).rstrip("/"))
+        else:
+            silver_root = _resolve_external_location(self.silver_external_location)
+        if not silver_root:
+            # Final fallback for non-UC local mounts
+            silver_root = _normalize_base("/mnt/dlstelkomnetworkprod/silver")
+
+        # Persist paths. Keep base_path for backward compatibility but set it to bronze_root.
+        self.base_path = bronze_root
+        self.bronze_path = bronze_root
+        self.silver_path = silver_root
+        self.catalog = "telkom_analytics"
+        self.timezone = "Africa/Johannesburg"
+
+    # Create silver base directory if possible (works on Databricks)
+        try:
+            from pyspark.dbutils import DBUtils  # type: ignore
+            # Only attempt mkdirs for DBFS paths
+            if str(self.silver_path).startswith("dbfs:/"):
+                DBUtils(spark).fs.mkdirs(self.silver_path)
+        except Exception:
+            pass
+
+        try:
+            spark.sql("USE CATALOG main")
+        except Exception:
+            pass
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.catalog}")
+        spark.sql(f"USE SCHEMA {self.catalog}")
+
+
 
     def to_utc(self, col_ts):
         return to_utc_timestamp(col_ts, self.timezone)
@@ -70,17 +140,61 @@ class TelkomBronzeToSilver:
         return spark_round(col.cast("double"), scale)
 
     # ---------- Incremental load helpers ----------
+    def check_storage(self) -> bool:
+        """Fast check that bronze storage is reachable; prints a helpful message on failure."""
+        try:
+            from pyspark.dbutils import DBUtils  # type: ignore
+            DBUtils(spark).fs.ls(self.bronze_path)
+            return True
+        except Exception as e:
+            # If using a cloud URI, some orgs keep data under a nested '/bronze' folder beneath the container root.
+            # Try that alternative path once before failing.
+            try:
+                if not str(self.base_path).startswith("dbfs:/") and not str(self.bronze_path).rstrip("/").endswith("/bronze"):
+                    candidate = f"{self.base_path}/bronze"
+                    DBUtils(spark).fs.ls(candidate)
+                    print(f"ℹ️ Switching bronze path to nested folder: {candidate}")
+                    self.bronze_path = candidate
+                    return True
+            except Exception:
+                pass
+            print(f"⚠️ Storage check failed for {self.bronze_path}: {e}")
+            print(
+                "If you're using Unity Catalog external locations, ensure the compute has permissions and the URL is under the external location bound to your storage credential."
+            )
+            try:
+                # Show configured external locations if available
+                if getattr(self, "bronze_external_location", None):
+                    desc = spark.sql(f"DESCRIBE EXTERNAL LOCATION `{self.bronze_external_location}`")
+                    desc.show(truncate=False)
+                if getattr(self, "silver_external_location", None):
+                    desc = spark.sql(f"DESCRIBE EXTERNAL LOCATION `{self.silver_external_location}`")
+                    desc.show(truncate=False)
+            except Exception:
+                pass
+            return False
     def ensure_watermark_table(self):
         """Create the watermark tracking table if it doesn't exist."""
         meta_path = f"{self.silver_path}/_meta/etl_watermarks"
-        spark.sql(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self.catalog}.etl_watermarks (
-              table_name STRING,
-              watermark_ts TIMESTAMP
-            ) USING DELTA LOCATION '{meta_path}'
-            """
-        )
+        # Use managed table when only DBFS path is available; LOCATION requires cloud scheme.
+        if str(self.silver_path).startswith("dbfs:/"):
+            spark.sql(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.catalog}.etl_watermarks (
+                    table_name STRING,
+                    watermark_ts TIMESTAMP
+                ) USING DELTA
+                """
+            )
+        else:
+            spark.sql(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.catalog}.etl_watermarks (
+                    table_name STRING,
+                    watermark_ts TIMESTAMP
+                ) USING DELTA LOCATION '{meta_path}'
+                """
+            )
 
     def get_watermark(self, table_name: str):
         """Return the last processed watermark timestamp for a table, or None."""
@@ -117,16 +231,59 @@ class TelkomBronzeToSilver:
         if wm is not None:
             self.update_watermark(table_name, wm)
 
-    def merge_into_delta_table(self, source_df, target_table, partition_cols, merge_condition, update_cols, insert_cols):
+    def merge_into_delta_table(self, source_df, target_table, partition_cols, merge_condition, update_cols, insert_cols, zorder_cols=None):
         target_path = f"{self.silver_path}/{target_table}"
-        if not self.has_rows(source_df):
-            print(f"No new data for {target_table}; skipping merge.")
+        has_data = self.has_rows(source_df)
+        # Use table name for Delta operations
+        delta_table = None
+        exists = False
+        # Standard existence check; handle stale UC entries pointing to missing/invalid paths by auto-dropping
+        try:
+            exists = spark.catalog.tableExists(f"{self.catalog}.{target_table}")
+        except Exception as e:
+            msg = str(e)
+            if "DELTA_PATH_DOES_NOT_EXIST" in msg or "42K03" in msg:
+                print(
+                    f"ℹ️ Detected stale catalog entry for {self.catalog}.{target_table} with missing path. Dropping and recreating under silver."
+                )
+                spark.sql(f"DROP TABLE IF EXISTS {self.catalog}.{target_table}")
+                exists = False
+            else:
+                raise
+        # If there is no new data, ensure the table exists (create empty skeleton if missing) and return
+        if not has_data:
+            if exists:
+                print(f"No new data for {target_table}; table already exists; skipping merge.")
+                return
+            # Create an empty Delta table with the expected schema
+            empty_df = source_df.limit(0)
+            writer = empty_df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+            if partition_cols:
+                writer = writer.partitionBy(*partition_cols)
+            if str(self.silver_path).startswith("dbfs:/"):
+                writer.saveAsTable(f"{self.catalog}.{target_table}")
+            else:
+                writer.save(target_path)
+                spark.sql(
+                    f"CREATE TABLE IF NOT EXISTS {self.catalog}.{target_table} USING DELTA LOCATION '{target_path}'"
+                )
+            print(f"No new data for {target_table}; created empty Delta table at {target_path}.")
             return
-        delta_table = (
-            DeltaTable.forPath(spark, target_path)
-            if spark.catalog.tableExists(f"{self.catalog}.{target_table}")
-            else None
-        )
+        if exists:
+            try:
+                delta_table = DeltaTable.forName(spark, f"{self.catalog}.{target_table}")
+            except Exception as e:
+                msg = str(e)
+                if "DELTA_PATH_DOES_NOT_EXIST" in msg or "is not a Delta table" in msg:
+                    print(
+                        f"ℹ️ Existing table {self.catalog}.{target_table} points to an invalid/missing path. Dropping and recreating under silver."
+                    )
+                    spark.sql(f"DROP TABLE IF EXISTS {self.catalog}.{target_table}")
+                    delta_table = None
+                else:
+                    raise RuntimeError(
+                        f"Table {self.catalog}.{target_table} exists but could not be opened as a Delta table: {e}"
+                    )
         if delta_table:
             update_map = {k: expr(v) if isinstance(v, str) else v for k, v in update_cols.items()}
             insert_map = {k: expr(v) if isinstance(v, str) else v for k, v in insert_cols.items()}
@@ -141,13 +298,33 @@ class TelkomBronzeToSilver:
             writer = source_df.write.format("delta").mode("overwrite").option("overwriteSchema", "true")
             if partition_cols:
                 writer = writer.partitionBy(*partition_cols)
-            writer.save(target_path)
+            # If using DBFS silver path, create a managed table (no LOCATION). Otherwise, register external path.
+            if str(self.silver_path).startswith("dbfs:/"):
+                writer.saveAsTable(f"{self.catalog}.{target_table}")
+            else:
+                writer.save(target_path)
+                spark.sql(
+                    f"CREATE TABLE IF NOT EXISTS {self.catalog}.{target_table} USING DELTA LOCATION '{target_path}'"
+                )
+        # Explicit Z-ORDER columns improve query performance; avoid partition columns.
+        # Start with provided zorder_cols or fall back to the first source column.
+        proposed = zorder_cols if zorder_cols else [source_df.columns[0]]
+        # Remove any partition columns and duplicates while preserving order.
+        part_set = set(partition_cols or [])
+        seen = set()
+        zcols = []
+        for c in proposed:
+            if c in part_set or c in seen:
+                continue
+            seen.add(c)
+            zcols.append(c)
+        # Run OPTIMIZE ZORDER only if we have at least one non-partition column.
+        if zcols:
             spark.sql(
-                f"CREATE TABLE IF NOT EXISTS {self.catalog}.{target_table} USING DELTA LOCATION '{target_path}'"
+                f"OPTIMIZE {self.catalog}.{target_table} ZORDER BY ({', '.join(zcols)})"
             )
-        spark.sql(
-            f"OPTIMIZE {self.catalog}.{target_table} ZORDER BY ({', '.join(source_df.columns[:2])})"
-        )
+        else:
+            print(f"ℹ️ Skipping Z-ORDER for {target_table} because only partition columns were provided.")
         spark.sql(f"ANALYZE TABLE {self.catalog}.{target_table} COMPUTE STATISTICS")
 
     def create_silver_tables(self):
@@ -166,10 +343,20 @@ class TelkomBronzeToSilver:
         ]
         region_df = spark.createDataFrame(
             [(i, r) for i, r in enumerate(REGIONS, start=1)], ["region_key", "region"]
-        )
-        region_df.write.format("delta").mode("overwrite").saveAsTable(
-            f"{self.catalog}.dim_region_silver"
-        )
+        ).withColumn("region", upper(col("region")))
+        # Ensure the dimension table is stored under the silver root as well
+        if str(self.silver_path).startswith("dbfs:/"):
+            region_df.write.format("delta").mode("overwrite").saveAsTable(
+                f"{self.catalog}.dim_region_silver"
+            )
+        else:
+            dim_path = f"{self.silver_path}/dim_region_silver"
+            region_df.write.format("delta").mode("overwrite").save(dim_path)
+            # Recreate as an external table at the silver location to guarantee placement
+            spark.sql(f"DROP TABLE IF EXISTS {self.catalog}.dim_region_silver")
+            spark.sql(
+                f"CREATE TABLE {self.catalog}.dim_region_silver USING DELTA LOCATION '{dim_path}'"
+            )
 
         # tower_locations
         tower_schema = StructType(
@@ -215,6 +402,7 @@ class TelkomBronzeToSilver:
                 "latitude": "source.latitude",
                 "longitude": "source.longitude",
             },
+            zorder_cols=["region_key", "tower_sk"],
         )
 
         # network_logs
@@ -236,7 +424,11 @@ class TelkomBronzeToSilver:
         nw_raw = spark.read.schema(nw_schema).parquet(
             f"{self.bronze_path}/network_logs"
         )
-        nw_wm = self.get_watermark("network_logs")
+        try:
+            nw_exists = spark.catalog.tableExists(f"{self.catalog}.network_logs")
+        except Exception:
+            nw_exists = False
+        nw_wm = self.get_watermark("network_logs") if nw_exists else None
         nw_enriched = (
             nw_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .withColumn("region", upper(trim(col("region"))))
@@ -301,6 +493,7 @@ class TelkomBronzeToSilver:
                 "performance_category": "source.performance_category",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(nw_silver, "ts_utc", "network_logs")
 
@@ -324,7 +517,11 @@ class TelkomBronzeToSilver:
         weather_raw = spark.read.schema(w_schema).parquet(
             f"{self.bronze_path}/weather_data"
         )
-        weather_wm = self.get_watermark("weather_data")
+        try:
+            weather_exists = spark.catalog.tableExists(f"{self.catalog}.weather_data")
+        except Exception:
+            weather_exists = False
+        weather_wm = self.get_watermark("weather_data") if weather_exists else None
         weather_enriched = (
             weather_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .withColumn("region", upper(trim(col("region"))))
@@ -399,6 +596,7 @@ class TelkomBronzeToSilver:
                 "weather_severity": "source.weather_severity",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(weather_silver, "ts_utc", "weather_data")
 
@@ -419,7 +617,11 @@ class TelkomBronzeToSilver:
         cu_raw = spark.read.schema(cu_schema).parquet(
             f"{self.bronze_path}/customer_usage"
         )
-        cu_wm = self.get_watermark("customer_usage")
+        try:
+            cu_exists = spark.catalog.tableExists(f"{self.catalog}.customer_usage")
+        except Exception:
+            cu_exists = False
+        cu_wm = self.get_watermark("customer_usage") if cu_exists else None
         cu_enriched = (
             cu_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .withColumn("data_usage_mb", self.clamp(col("data_usage_mb"), 0.0, 50000.0))
@@ -471,6 +673,7 @@ class TelkomBronzeToSilver:
                 "usage_category": "source.usage_category",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["customer_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(cu_silver, "ts_utc", "customer_usage")
 
@@ -488,7 +691,11 @@ class TelkomBronzeToSilver:
         ls_raw = spark.read.schema(ls_schema).parquet(
             f"{self.bronze_path}/load_shedding_schedules"
         )
-        ls_wm = self.get_watermark("load_shedding_schedules")
+        try:
+            ls_exists = spark.catalog.tableExists(f"{self.catalog}.load_shedding_schedules")
+        except Exception:
+            ls_exists = False
+        ls_wm = self.get_watermark("load_shedding_schedules") if ls_exists else None
         ls_enriched = (
             ls_raw.withColumn("region", upper(trim(col("region"))))
             .join(region_df, "region", "inner")
@@ -537,6 +744,7 @@ class TelkomBronzeToSilver:
                 "duration_hours": "source.duration_hours",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["region_key", "start_utc"],
         )
         self.compute_and_update_watermark(ls_silver, "start_utc", "load_shedding_schedules")
 
@@ -555,7 +763,11 @@ class TelkomBronzeToSilver:
         cf_raw = spark.read.schema(cf_schema).parquet(
             f"{self.bronze_path}/customer_feedback"
         )
-        cf_wm = self.get_watermark("customer_feedback")
+        try:
+            cf_exists = spark.catalog.tableExists(f"{self.catalog}.customer_feedback")
+        except Exception:
+            cf_exists = False
+        cf_wm = self.get_watermark("customer_feedback") if cf_exists else None
         cf_enriched = (
             cf_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .withColumn("sentiment_score", self.clamp(col("sentiment_score"), -1.0, 1.0))
@@ -599,6 +811,7 @@ class TelkomBronzeToSilver:
                 "sentiment_label": "source.sentiment_label",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["ts_utc"],
         )
         self.compute_and_update_watermark(cf_silver, "ts_utc", "customer_feedback")
 
@@ -617,7 +830,11 @@ class TelkomBronzeToSilver:
         ti_raw = spark.read.schema(ti_schema).parquet(
             f"{self.bronze_path}/tower_imagery"
         )
-        ti_wm = self.get_watermark("tower_imagery")
+        try:
+            ti_exists = spark.catalog.tableExists(f"{self.catalog}.tower_imagery")
+        except Exception:
+            ti_exists = False
+        ti_wm = self.get_watermark("tower_imagery") if ti_exists else None
         ti_enriched = (
             ti_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "inner")
@@ -661,6 +878,7 @@ class TelkomBronzeToSilver:
                 "condition_label": "source.condition_label",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(ti_silver, "ts_utc", "tower_imagery")
 
@@ -678,7 +896,11 @@ class TelkomBronzeToSilver:
         vt_raw = spark.read.schema(vt_schema).parquet(
             f"{self.bronze_path}/voice_transcriptions"
         )
-        vt_wm = self.get_watermark("voice_transcriptions")
+        try:
+            vt_exists = spark.catalog.tableExists(f"{self.catalog}.voice_transcriptions")
+        except Exception:
+            vt_exists = False
+        vt_wm = self.get_watermark("voice_transcriptions") if vt_exists else None
         vt_enriched = (
             vt_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .withColumn("transcription", upper(trim(col("transcription"))))
@@ -722,6 +944,7 @@ class TelkomBronzeToSilver:
                 "transcription": "source.transcription",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["technician_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(vt_silver, "ts_utc", "voice_transcriptions")
 
@@ -740,19 +963,24 @@ class TelkomBronzeToSilver:
         tc_raw = spark.read.schema(tc_schema).parquet(
             f"{self.bronze_path}/tower_connectivity"
         )
-        tc_wm = self.get_watermark("tower_connectivity")
+        try:
+            tc_exists = spark.catalog.tableExists(f"{self.catalog}.tower_connectivity")
+        except Exception:
+            tc_exists = False
+        tc_wm = self.get_watermark("tower_connectivity") if tc_exists else None
+        # Avoid ambiguous `tower_id` by pre-aliasing join keys and using explicit conditions
+        src_map = towers_silver.select(
+            col("tower_id").alias("src_join_tower_id"),
+            col("tower_sk").alias("src_tower_sk"),
+        )
+        dst_map = towers_silver.select(
+            col("tower_id").alias("dst_join_tower_id"),
+            col("tower_sk").alias("dst_tower_sk"),
+        )
         tc_enriched = (
             tc_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
-            .join(
-                towers_silver.select("tower_id", "tower_sk").withColumnRenamed("tower_sk", "src_tower_sk"),
-                col("src_tower_id") == col("tower_id"),
-                "inner",
-            )
-            .join(
-                towers_silver.select("tower_id", "tower_sk").withColumnRenamed("tower_sk", "dst_tower_sk"),
-                col("dst_tower_id") == col("tower_id"),
-                "inner",
-            )
+            .join(src_map, tc_raw["src_tower_id"] == col("src_join_tower_id"), "inner")
+            .join(dst_map, tc_raw["dst_tower_id"] == col("dst_join_tower_id"), "inner")
             .withColumn("signal_quality", self.clamp(col("signal_quality"), 0.0, 100.0))
         )
         if tc_wm is not None:
@@ -793,6 +1021,7 @@ class TelkomBronzeToSilver:
                 "signal_quality": "source.signal_quality",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["src_tower_sk", "dst_tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(tc_silver, "ts_utc", "tower_connectivity")
 
@@ -811,7 +1040,11 @@ class TelkomBronzeToSilver:
         tcap_raw = spark.read.schema(tcap_schema).parquet(
             f"{self.bronze_path}/tower_capacity"
         )
-        tcap_wm = self.get_watermark("tower_capacity")
+        try:
+            tcap_exists = spark.catalog.tableExists(f"{self.catalog}.tower_capacity")
+        except Exception:
+            tcap_exists = False
+        tcap_wm = self.get_watermark("tower_capacity") if tcap_exists else None
         tcap_enriched = (
             tcap_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "inner")
@@ -856,6 +1089,7 @@ class TelkomBronzeToSilver:
                 "utilization_percent": "source.utilization_percent",
                 "hour_key": "source.hour_key",
             },
+            zorder_cols=["tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(tcap_silver, "ts_utc", "tower_capacity")
 
@@ -877,7 +1111,11 @@ class TelkomBronzeToSilver:
         mc_raw = spark.read.schema(mc_schema).parquet(
             f"{self.bronze_path}/maintenance_crew"
         )
-        mc_wm = self.get_watermark("maintenance_crew")
+        try:
+            mc_exists = spark.catalog.tableExists(f"{self.catalog}.maintenance_crew")
+        except Exception:
+            mc_exists = False
+        mc_wm = self.get_watermark("maintenance_crew") if mc_exists else None
         mc_enriched = (
             mc_raw.withColumn("region", upper(trim(col("region"))))
             .join(region_df, "region", "inner")
@@ -932,6 +1170,7 @@ class TelkomBronzeToSilver:
                 "longitude": "source.longitude",
                 "available": "source.available",
             },
+            zorder_cols=["crew_sk", "shift_start_utc"],
         )
         self.compute_and_update_watermark(mc_silver, "shift_start_utc", "maintenance_crew")
 
@@ -968,6 +1207,10 @@ class TelkomBronzeToSilver:
     def run_bronze_to_silver_pipeline(self):
         print("Starting Bronze to Silver Pipeline...")
         try:
+            if not self.check_storage():
+                raise RuntimeError(
+                    "Cannot access bronze path. Verify Storage Credential/External Location and permissions, or update base_path."
+                )
             self.ensure_watermark_table()
             self.create_silver_tables()
             print("✅ Silver tables created successfully")
