@@ -64,6 +64,11 @@ class TelkomBronzeToSilver:
         # Set Spark session timezone
         # Store all timestamps as UTC; convert inputs from Africa/Johannesburg to UTC downstream.
         spark.conf.set("spark.sql.session.timeZone", "UTC")
+        # Allow schema evolution during MERGE operations when adding new columns (e.g., tower_sk)
+        try:
+            spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
+        except Exception:
+            pass
 
         # Resolve bronze and silver roots independently. Prefer UC External Locations; allow explicit overrides.
         def _resolve_external_location(loc_name: str):
@@ -604,6 +609,7 @@ class TelkomBronzeToSilver:
         cu_schema = StructType(
             [
                 StructField("customer_id", StringType(), True),
+                StructField("tower_id", StringType(), True),
                 StructField("data_usage_mb", DoubleType(), True),
                 StructField("call_duration_min", DoubleType(), True),
                 StructField("timestamp", TimestampType(), True),
@@ -624,6 +630,7 @@ class TelkomBronzeToSilver:
         cu_wm = self.get_watermark("customer_usage") if cu_exists else None
         cu_enriched = (
             cu_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
+            .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "left")
             .withColumn("data_usage_mb", self.clamp(col("data_usage_mb"), 0.0, 50000.0))
             .withColumn("call_duration_min", self.clamp(col("call_duration_min"), 0.0, 1440.0))
             .withColumn(
@@ -641,6 +648,7 @@ class TelkomBronzeToSilver:
             .dropDuplicates(["usage_row_sk"]).select(
                 "usage_row_sk",
                 "customer_sk",
+                "tower_sk",
                 "date_key",
                 "ts_utc",
                 "data_usage_mb",
@@ -656,6 +664,7 @@ class TelkomBronzeToSilver:
             merge_condition="target.usage_row_sk = source.usage_row_sk",
             update_cols={
                 "customer_sk": "source.customer_sk",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "ts_utc": "source.ts_utc",
                 "data_usage_mb": "source.data_usage_mb",
@@ -666,6 +675,7 @@ class TelkomBronzeToSilver:
             insert_cols={
                 "usage_row_sk": "source.usage_row_sk",
                 "customer_sk": "source.customer_sk",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "ts_utc": "source.ts_utc",
                 "data_usage_mb": "source.data_usage_mb",
@@ -673,7 +683,7 @@ class TelkomBronzeToSilver:
                 "usage_category": "source.usage_category",
                 "hour_key": "source.hour_key",
             },
-            zorder_cols=["customer_sk", "ts_utc"],
+            zorder_cols=["tower_sk", "customer_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(cu_silver, "ts_utc", "customer_usage")
 
@@ -681,6 +691,7 @@ class TelkomBronzeToSilver:
         ls_schema = StructType(
             [
                 StructField("region", StringType(), True),
+                StructField("tower_id", StringType(), True),
                 StructField("start_time", TimestampType(), True),
                 StructField("end_time", TimestampType(), True),
                 StructField("year", IntegerType(), True),
@@ -702,6 +713,7 @@ class TelkomBronzeToSilver:
             .withColumn("start_utc", self.to_utc(col("start_time")))
             .withColumn("end_utc", self.to_utc(col("end_time")))
             .filter(col("end_utc") > col("start_utc"))
+            .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "left")
         )
         if ls_wm is not None:
             ls_enriched = ls_enriched.filter(col("start_utc") > lit(ls_wm))
@@ -715,6 +727,7 @@ class TelkomBronzeToSilver:
             .dropDuplicates(["ls_row_sk"]).select(
                 "ls_row_sk",
                 "region_key",
+                "tower_sk",
                 "date_key",
                 "start_utc",
                 "end_utc",
@@ -729,6 +742,7 @@ class TelkomBronzeToSilver:
             merge_condition="target.ls_row_sk = source.ls_row_sk",
             update_cols={
                 "region_key": "source.region_key",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "start_utc": "source.start_utc",
                 "end_utc": "source.end_utc",
@@ -738,19 +752,21 @@ class TelkomBronzeToSilver:
             insert_cols={
                 "ls_row_sk": "source.ls_row_sk",
                 "region_key": "source.region_key",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "start_utc": "source.start_utc",
                 "end_utc": "source.end_utc",
                 "duration_hours": "source.duration_hours",
                 "hour_key": "source.hour_key",
             },
-            zorder_cols=["region_key", "start_utc"],
+            zorder_cols=["tower_sk", "region_key", "start_utc"],
         )
         self.compute_and_update_watermark(ls_silver, "start_utc", "load_shedding_schedules")
 
         # customer_feedback
         cf_schema = StructType(
             [
+                StructField("tower_id", StringType(), True),
                 StructField("text", StringType(), True),
                 StructField("sentiment_score", DoubleType(), True),
                 StructField("timestamp", TimestampType(), True),
@@ -770,6 +786,7 @@ class TelkomBronzeToSilver:
         cf_wm = self.get_watermark("customer_feedback") if cf_exists else None
         cf_enriched = (
             cf_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
+            .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "left")
             .withColumn("sentiment_score", self.clamp(col("sentiment_score"), -1.0, 1.0))
             .withColumn("sentiment_label", upper(trim(col("sentiment_label"))))
         )
@@ -781,6 +798,7 @@ class TelkomBronzeToSilver:
             .withColumn("feedback_row_sk", self.sha256_str(col("text"), col("ts_utc")))
             .dropDuplicates(["feedback_row_sk"]).select(
                 "feedback_row_sk",
+                "tower_sk",
                 "date_key",
                 "ts_utc",
                 "text",
@@ -795,6 +813,7 @@ class TelkomBronzeToSilver:
             partition_cols=["date_key"],
             merge_condition="target.feedback_row_sk = source.feedback_row_sk",
             update_cols={
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "ts_utc": "source.ts_utc",
                 "text": "source.text",
@@ -804,6 +823,7 @@ class TelkomBronzeToSilver:
             },
             insert_cols={
                 "feedback_row_sk": "source.feedback_row_sk",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "ts_utc": "source.ts_utc",
                 "text": "source.text",
@@ -811,7 +831,7 @@ class TelkomBronzeToSilver:
                 "sentiment_label": "source.sentiment_label",
                 "hour_key": "source.hour_key",
             },
-            zorder_cols=["ts_utc"],
+            zorder_cols=["tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(cf_silver, "ts_utc", "customer_feedback")
 
@@ -886,6 +906,7 @@ class TelkomBronzeToSilver:
         vt_schema = StructType(
             [
                 StructField("technician_id", StringType(), True),
+                StructField("tower_id", StringType(), True),
                 StructField("transcription", StringType(), True),
                 StructField("timestamp", TimestampType(), True),
                 StructField("year", IntegerType(), True),
@@ -905,6 +926,7 @@ class TelkomBronzeToSilver:
             vt_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .withColumn("transcription", upper(trim(col("transcription"))))
             .withColumn("technician_sk", self.sha256_str(col("technician_id")))
+            .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "left")
         )
         if vt_wm is not None:
             vt_enriched = vt_enriched.filter(col("ts_utc") > lit(vt_wm))
@@ -918,6 +940,7 @@ class TelkomBronzeToSilver:
             .dropDuplicates(["transcription_row_sk"]).select(
                 "transcription_row_sk",
                 "technician_sk",
+                "tower_sk",
                 "date_key",
                 "ts_utc",
                 "transcription",
@@ -931,6 +954,7 @@ class TelkomBronzeToSilver:
             merge_condition="target.transcription_row_sk = source.transcription_row_sk",
             update_cols={
                 "technician_sk": "source.technician_sk",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "ts_utc": "source.ts_utc",
                 "transcription": "source.transcription",
@@ -939,12 +963,13 @@ class TelkomBronzeToSilver:
             insert_cols={
                 "transcription_row_sk": "source.transcription_row_sk",
                 "technician_sk": "source.technician_sk",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "ts_utc": "source.ts_utc",
                 "transcription": "source.transcription",
                 "hour_key": "source.hour_key",
             },
-            zorder_cols=["technician_sk", "ts_utc"],
+            zorder_cols=["technician_sk", "tower_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(vt_silver, "ts_utc", "voice_transcriptions")
 
@@ -1098,6 +1123,7 @@ class TelkomBronzeToSilver:
             [
                 StructField("crew_id", StringType(), True),
                 StructField("region", StringType(), True),
+                StructField("tower_id", StringType(), True),
                 StructField("latitude", DoubleType(), True),
                 StructField("longitude", DoubleType(), True),
                 StructField("available", BooleanType(), True),
@@ -1125,6 +1151,7 @@ class TelkomBronzeToSilver:
             .withColumn("longitude", self.clamp(col("longitude"), 16.0, 33.0))
             .withColumn("latitude", self.safe_round(col("latitude"), 6))
             .withColumn("longitude", self.safe_round(col("longitude"), 6))
+            .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "left")
         )
         if mc_wm is not None:
             mc_enriched = mc_enriched.filter(col("shift_start_utc") > lit(mc_wm))
@@ -1136,6 +1163,7 @@ class TelkomBronzeToSilver:
                 "crew_row_sk",
                 "crew_sk",
                 "region_key",
+                "tower_sk",
                 "date_key",
                 "shift_start_utc",
                 "shift_end_utc",
@@ -1152,6 +1180,7 @@ class TelkomBronzeToSilver:
             update_cols={
                 "crew_sk": "source.crew_sk",
                 "region_key": "source.region_key",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "shift_start_utc": "source.shift_start_utc",
                 "shift_end_utc": "source.shift_end_utc",
@@ -1163,6 +1192,7 @@ class TelkomBronzeToSilver:
                 "crew_row_sk": "source.crew_row_sk",
                 "crew_sk": "source.crew_sk",
                 "region_key": "source.region_key",
+                "tower_sk": "source.tower_sk",
                 "date_key": "source.date_key",
                 "shift_start_utc": "source.shift_start_utc",
                 "shift_end_utc": "source.shift_end_utc",
@@ -1170,7 +1200,7 @@ class TelkomBronzeToSilver:
                 "longitude": "source.longitude",
                 "available": "source.available",
             },
-            zorder_cols=["crew_sk", "shift_start_utc"],
+            zorder_cols=["tower_sk", "crew_sk", "shift_start_utc"],
         )
         self.compute_and_update_watermark(mc_silver, "shift_start_utc", "maintenance_crew")
 

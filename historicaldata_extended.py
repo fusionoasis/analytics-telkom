@@ -134,6 +134,13 @@ def generate_timestamp_data():
     tower_locations_df = tower_locations.withColumn(
         "tower_index", expr("row_number() over (order by tower_id) - 1")
     )
+    # Precompute helpers for joins
+    total_towers = tower_locations_df.count()
+    towers_index_lookup = tower_locations_df.select("tower_index", "tower_id")
+    towers_by_region = tower_locations_df.select("region", "tower_id").withColumn(
+        "region_rank", expr("row_number() over (partition by region order by tower_id)")
+    )
+    region_counts = tower_locations_df.groupBy("region").count().withColumnRenamed("count", "region_tower_count")
 
     # Utility
     def _clean_dbfs_path(dbfs_path: str):
@@ -276,6 +283,13 @@ def generate_timestamp_data():
         .withColumn("month", month(col("timestamp")))
         .withColumn("day", dayofmonth(col("timestamp")))
     )
+    # Add tower_id deterministically based on customer_id
+    customer_usage = (
+        customer_usage
+        .withColumn("tower_index", pmod(spark_hash(col("customer_id")), lit(total_towers)).cast("int"))
+        .join(towers_index_lookup, on="tower_index", how="left")
+        .drop("tower_index")
+    )
     customer_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_usage"
     _clean_dbfs_path(customer_parquet_path)
     distinct_days_cu = [
@@ -310,6 +324,17 @@ def generate_timestamp_data():
         .withColumn("year", year(col("start_time")))
         .withColumn("month", month(col("start_time")))
         .withColumn("day", dayofmonth(col("start_time")))
+    )
+    # Add tower_id by selecting a deterministic tower within the same region per event
+    load_shedding = (
+        load_shedding
+        .join(region_counts, on="region", how="left")
+        .withColumn(
+            "region_rank",
+            (pmod(spark_hash(expr("concat(region, cast(start_time as string))")), col("region_tower_count")) + 1).cast("int")
+        )
+        .join(towers_by_region, on=["region", "region_rank"], how="left")
+        .drop("region_tower_count", "region_rank")
     )
     load_shedding_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/load_shedding_schedules"
     _clean_dbfs_path(load_shedding_parquet_path)
@@ -362,6 +387,13 @@ def generate_timestamp_data():
         .withColumn("year", year(col("timestamp")))
         .withColumn("month", month(col("timestamp")))
         .withColumn("day", dayofmonth(col("timestamp")))
+    )
+    # Add tower_id deterministically based on text and timestamp
+    customer_feedback = (
+        customer_feedback
+        .withColumn("tower_index", pmod(spark_hash(expr("concat(text, cast(timestamp as string))")), lit(total_towers)).cast("int"))
+        .join(towers_index_lookup, on="tower_index", how="left")
+        .drop("tower_index")
     )
     feedback_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/customer_feedback"
     _clean_dbfs_path(feedback_parquet_path)
@@ -446,6 +478,13 @@ def generate_timestamp_data():
         .withColumn("year", year(col("timestamp")))
         .withColumn("month", month(col("timestamp")))
         .withColumn("day", dayofmonth(col("timestamp")))
+    )
+    # Add tower_id deterministically based on technician_id
+    voice_transcriptions = (
+        voice_transcriptions
+        .withColumn("tower_index", pmod(spark_hash(col("technician_id")), lit(total_towers)).cast("int"))
+        .join(towers_index_lookup, on="tower_index", how="left")
+        .drop("tower_index")
     )
     vt_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/voice_transcriptions"
     _clean_dbfs_path(vt_parquet_path)
@@ -568,6 +607,17 @@ def generate_timestamp_data():
         .withColumn("year", year(col("shift_start")))
         .withColumn("month", month(col("shift_start")))
         .withColumn("day", dayofmonth(col("shift_start")))
+    )
+    # Add tower_id by selecting a deterministic tower within the same region per crew record
+    maintenance_crew = (
+        maintenance_crew
+        .join(region_counts, on="region", how="left")
+        .withColumn(
+            "region_rank",
+            (pmod(spark_hash(expr("concat(crew_id, cast(shift_start as string))")), col("region_tower_count")) + 1).cast("int")
+        )
+        .join(towers_by_region, on=["region", "region_rank"], how="left")
+        .drop("region_tower_count", "region_rank")
     )
     crew_parquet_path = "dbfs:/mnt/dlstelkomnetworkprod/raw/maintenance_crew"
     _clean_dbfs_path(crew_parquet_path)

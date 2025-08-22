@@ -280,6 +280,19 @@ def generate_interval_data():
     tower_locations_df = tower_locations.withColumn("tower_index", monotonically_increasing_id())
     tower_count = tower_locations_df.count()
 
+    # Deterministic indexing helpers (do not alter tower_locations_df usage)
+    towers_index_lookup = (
+        tower_locations.select("tower_id")
+        .withColumn("tower_index", expr("row_number() over (order by tower_id) - 1"))
+        .select("tower_index", "tower_id")
+    )
+    total_towers = towers_index_lookup.count()
+    towers_by_region = (
+        tower_locations.select("region", "tower_id")
+        .withColumn("region_rank", expr("row_number() over (partition by region order by tower_id)"))
+    )
+    region_counts = tower_locations.groupBy("region").count().withColumnRenamed("count", "region_tower_count")
+
     # === Network Logs ===
     network_logs = spark.range(30000).select(
         (rand() * tower_count).cast("long").alias("tower_index")
@@ -336,6 +349,13 @@ def generate_interval_data():
     )
     customer_path = f"{RAW_BASE}/customer_usage"
     tmp_cu = f"{customer_path}/.tmp_interval_{int(end_time.timestamp())}"
+    # Enrich with tower_id deterministically based on customer_id
+    customer_usage = (
+        customer_usage
+        .withColumn("tower_index", pmod(spark_hash(col("customer_id")), lit(total_towers)).cast("int"))
+        .join(towers_index_lookup, on="tower_index", how="left")
+        .drop("tower_index")
+    )
     (customer_usage
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_cu)
@@ -408,6 +428,13 @@ def generate_interval_data():
     
     cf_path = f"{RAW_BASE}/customer_feedback"
     tmp_cf = f"{cf_path}/.tmp_interval_{int(end_time.timestamp())}"
+    # Enrich with tower_id deterministically based on feedback text and timestamp
+    customer_feedback = (
+        customer_feedback
+        .withColumn("tower_index", pmod(spark_hash(expr("concat(text, cast(timestamp as string))")), lit(total_towers)).cast("int"))
+        .join(towers_index_lookup, on="tower_index", how="left")
+        .drop("tower_index")
+    )
     (customer_feedback
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_cf)
@@ -438,11 +465,80 @@ def generate_interval_data():
     
     vt_path = f"{RAW_BASE}/voice_transcriptions"
     tmp_vt = f"{vt_path}/.tmp_interval_{int(end_time.timestamp())}"
+    # Enrich with tower_id deterministically based on technician_id
+    voice_transcriptions = (
+        voice_transcriptions
+        .withColumn("tower_index", pmod(spark_hash(col("technician_id")), lit(total_towers)).cast("int"))
+        .join(towers_index_lookup, on="tower_index", how="left")
+        .drop("tower_index")
+    )
     (voice_transcriptions
      .coalesce(1)
      .write.format("parquet").mode("overwrite").save(tmp_vt)
     )
     vt_remote_file = _move_single_part_from_tmp(tmp_vt, vt_path)
+
+    # === Load Shedding Schedules (Interval) ===
+    load_shedding = (
+        spark.range(2000)
+        .select(
+            expr(
+                "element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), cast(rand() * 9 as int) + 1)"
+            ).alias("region"),
+            random_timestamp_in_interval(start_time, end_time).alias("start_time"),
+        )
+        .withColumn("end_time", expr("timestampadd(HOUR, cast(rand() * 3 + 1 as int), start_time)"))
+        .withColumn("year", year(col("start_time")))
+        .withColumn("month", month(col("start_time")))
+        .withColumn("day", dayofmonth(col("start_time")))
+        .join(region_counts, on="region", how="left")
+        .withColumn(
+            "region_rank",
+            (pmod(spark_hash(expr("concat(region, cast(start_time as string))")), col("region_tower_count")) + 1).cast("int")
+        )
+        .join(towers_by_region, on=["region", "region_rank"], how="left")
+        .drop("region_tower_count", "region_rank")
+    )
+    ls_path = f"{RAW_BASE}/load_shedding_schedules"
+    tmp_ls = f"{ls_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (load_shedding
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_ls)
+    )
+    ls_remote_file = _move_single_part_from_tmp(tmp_ls, ls_path)
+
+    # === Maintenance Crew (Interval) ===
+    maintenance_crew = (
+        spark.range(800)
+        .select(
+            col("id").cast("string").alias("crew_id"),
+            expr(
+                "element_at(array('Gauteng','KwaZulu-Natal','Western Cape','Eastern Cape','Free State','Mpumalanga','Northern Cape','Limpopo','North West'), cast(rand() * 9 as int) + 1)"
+            ).alias("region"),
+            (rand() * 7 + 22).alias("latitude"),
+            (rand() * 9 + 16).alias("longitude"),
+            expr("rand() < 0.7").alias("available"),
+            random_timestamp_in_interval(start_time, end_time).alias("shift_start"),
+        )
+        .withColumn("shift_end", expr("timestampadd(HOUR, 8, shift_start)"))
+        .withColumn("year", year(col("shift_start")))
+        .withColumn("month", month(col("shift_start")))
+        .withColumn("day", dayofmonth(col("shift_start")))
+        .join(region_counts, on="region", how="left")
+        .withColumn(
+            "region_rank",
+            (pmod(spark_hash(expr("concat(crew_id, cast(shift_start as string))")), col("region_tower_count")) + 1).cast("int")
+        )
+        .join(towers_by_region, on=["region", "region_rank"], how="left")
+        .drop("region_tower_count", "region_rank")
+    )
+    mc_path = f"{RAW_BASE}/maintenance_crew"
+    tmp_mc = f"{mc_path}/.tmp_interval_{int(end_time.timestamp())}"
+    (maintenance_crew
+     .coalesce(1)
+     .write.format("parquet").mode("overwrite").save(tmp_mc)
+    )
+    mc_remote_file = _move_single_part_from_tmp(tmp_mc, mc_path)
 
     # === Upload to GitHub ===
     commit_msg = f"Data update for interval {start_time.strftime('%Y-%m-%d %H:%M')} - {end_time.strftime('%H:%M')}"
@@ -451,6 +547,8 @@ def generate_interval_data():
     upload_file_with_github_index(w_remote_file, "data/weather_data", commit_msg)
     upload_file_with_github_index(cf_remote_file, "data/customer_feedback", commit_msg)
     upload_file_with_github_index(vt_remote_file, "data/voice_transcriptions", commit_msg)
+    upload_file_with_github_index(ls_remote_file, "data/load_shedding_schedules", commit_msg)
+    upload_file_with_github_index(mc_remote_file, "data/maintenance_crew", commit_msg)
 
     return True
 

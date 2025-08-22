@@ -641,11 +641,22 @@ class TelkomSilverToGold:
                        .withColumn("visibility_km", lit(None).cast("double")) \
                        .withColumn("dew_point_c", lit(None).cast("double")) \
                        .withColumn("weather_severity", lit(None).cast("int"))
-            if self._table_exists("load_shedding_schedules") and self._validate_columns("load_shedding_schedules", [
-                "region_key", "start_utc", "end_utc"
-            ]):
-                ls_silver = spark.read.table(f"{self.catalog}.load_shedding_schedules").alias("ls")
-                df = df.join(ls_silver, (col("n.region_key") == col("ls.region_key")) & (col("n.ts_utc").between(col("ls.start_utc"), col("ls.end_utc"))), "left")
+            # Prefer tower-level join for load shedding if available; fallback to region-level
+            if self._table_exists("load_shedding_schedules"):
+                if self._validate_columns("load_shedding_schedules", ["tower_sk", "start_utc", "end_utc"]):
+                    ls_silver = spark.read.table(f"{self.catalog}.load_shedding_schedules").alias("ls")
+                    df = df.join(
+                        ls_silver,
+                        (col("n.tower_sk") == col("ls.tower_sk")) & (col("n.ts_utc").between(col("ls.start_utc"), col("ls.end_utc"))),
+                        "left"
+                    )
+                elif self._validate_columns("load_shedding_schedules", ["region_key", "start_utc", "end_utc"]):
+                    ls_silver = spark.read.table(f"{self.catalog}.load_shedding_schedules").alias("ls")
+                    df = df.join(
+                        ls_silver,
+                        (col("n.region_key") == col("ls.region_key")) & (col("n.ts_utc").between(col("ls.start_utc"), col("ls.end_utc"))),
+                        "left"
+                    )
             fact_network = df.select(
                 col("dt.tower_key").alias("tower_key"), col("n.region_key"), col("n.date_key"), col("n.hour_key"), col("n.ts_utc"),
                 col("n.signal_strength"), col("n.latency_ms"), col("n.uptime"), col("n.error_code"), col("n.performance_category"),
@@ -695,6 +706,7 @@ class TelkomSilverToGold:
         spark.sql(f"""
         CREATE TABLE IF NOT EXISTS {self.catalog}.fact_customer_usage (
             customer_key BIGINT,
+            tower_key BIGINT,
             date_key INT,
             hour_key INT,
             ts_utc TIMESTAMP,
@@ -718,16 +730,24 @@ class TelkomSilverToGold:
             cu_silver = spark.read.table(f"{self.catalog}.customer_usage").alias("cu")
             dim_customer = spark.read.table(f"{self.catalog}.dim_customer").alias("dc")
             dim_date = spark.read.table(f"{self.catalog}.dim_date").alias("dd")
-            fact_usage = cu_silver \
+            # Optional tower join when tower_sk is available
+            join_tower = self._validate_columns("customer_usage", ["tower_sk"]) and self._table_exists("dim_tower")
+            if join_tower:
+                dim_tower_cur = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                cu_enriched = cu_silver.join(dim_tower_cur, col("cu.tower_sk") == col("dt.tower_sk"), "left")
+            else:
+                cu_enriched = cu_silver.withColumn("tower_key", lit(None).cast("bigint"))
+            tower_key_col = col("dt.tower_key") if join_tower else col("tower_key")
+            fact_usage = cu_enriched \
                 .join(dim_customer, col("cu.customer_sk") == col("dc.customer_sk"), "inner") \
                 .join(dim_date, (col("cu.date_key") == col("dd.date_key")) & (col("cu.hour_key") == col("dd.hour_key")), "inner") \
                 .select(
-                    col("dc.customer_key").alias("customer_key"), col("cu.date_key"), col("cu.hour_key"), col("cu.ts_utc"),
+            col("dc.customer_key").alias("customer_key"), tower_key_col.alias("tower_key"), col("cu.date_key"), col("cu.hour_key"), col("cu.ts_utc"),
                     col("cu.data_usage_mb"), col("cu.call_duration_min").alias("call_duration_minutes"),
                     col("cu.usage_category"),
                     current_timestamp().alias("created_at"), current_timestamp().alias("updated_at")
                 )
-            fact_usage_agg = fact_usage.groupBy("customer_key", "date_key", "hour_key", "ts_utc").agg(
+            fact_usage_agg = fact_usage.groupBy("customer_key", "tower_key", "date_key", "hour_key", "ts_utc").agg(
                 F.sum("data_usage_mb").alias("data_usage_mb"),
                 F.sum("call_duration_minutes").alias("call_duration_minutes"),
                 F.max("usage_category").alias("usage_category"),
@@ -742,11 +762,11 @@ class TelkomSilverToGold:
             spark.sql(f"""
             MERGE INTO {self.catalog}.fact_customer_usage t
             USING (SELECT * FROM stg_fact_usage) s
-            ON t.customer_key = s.customer_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc
+            ON t.customer_key = s.customer_key AND t.tower_key <=> s.tower_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc
             WHEN MATCHED THEN UPDATE SET *
             WHEN NOT MATCHED THEN INSERT *
             """)
-            self._optimize_table("fact_customer_usage", ["customer_key"]) 
+            self._optimize_table("fact_customer_usage", ["customer_key", "tower_key"]) 
         else:
             print("Skipping fact_customer_usage due to missing prerequisites.")
 
@@ -801,6 +821,7 @@ class TelkomSilverToGold:
         loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_customer_feedback'"
         spark.sql(f"""
         CREATE TABLE IF NOT EXISTS {self.catalog}.fact_customer_feedback (
+            tower_key BIGINT,
             date_key INT,
             hour_key INT,
             ts_utc TIMESTAMP,
@@ -819,14 +840,22 @@ class TelkomSilverToGold:
         ):
             cf_silver = spark.read.table(f"{self.catalog}.customer_feedback").alias("cf")
             dim_date = spark.read.table(f"{self.catalog}.dim_date").alias("dd")
-            fact_feedback = cf_silver \
+            # Optional tower join when tower_sk is available
+            join_tower_cf = self._validate_columns("customer_feedback", ["tower_sk"]) and self._table_exists("dim_tower")
+            if join_tower_cf:
+                dim_tower_cur = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                cf_enriched = cf_silver.join(dim_tower_cur, col("cf.tower_sk") == col("dt.tower_sk"), "left")
+            else:
+                cf_enriched = cf_silver.withColumn("tower_key", lit(None).cast("bigint"))
+            tower_key_col_cf = col("dt.tower_key") if join_tower_cf else col("tower_key")
+            fact_feedback = cf_enriched \
                 .join(dim_date, (col("cf.date_key") == col("dd.date_key")) & (col("cf.hour_key") == col("dd.hour_key")), "inner") \
                 .select(
-                    col("dd.date_key").alias("date_key"), col("cf.hour_key"), col("cf.ts_utc"),
+            tower_key_col_cf.alias("tower_key"), col("dd.date_key").alias("date_key"), col("cf.hour_key"), col("cf.ts_utc"),
                     col("cf.text"), col("cf.sentiment_score"), col("cf.sentiment_label"),
                     current_timestamp().alias("created_at")
                 )
-            fact_feedback_agg = fact_feedback.groupBy("date_key", "hour_key", "ts_utc", "text").agg(
+            fact_feedback_agg = fact_feedback.groupBy("tower_key", "date_key", "hour_key", "ts_utc", "text").agg(
                 F.avg("sentiment_score").alias("sentiment_score"),
                 F.max("sentiment_label").alias("sentiment_label"),
                 F.max("created_at").alias("created_at")
@@ -835,11 +864,11 @@ class TelkomSilverToGold:
             spark.sql(f"""
             MERGE INTO {self.catalog}.fact_customer_feedback t
             USING (SELECT * FROM stg_fact_feedback) s
-            ON t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc AND t.text = s.text
+            ON t.tower_key <=> s.tower_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc AND t.text = s.text
             WHEN MATCHED THEN UPDATE SET *
             WHEN NOT MATCHED THEN INSERT *
             """)
-            self._optimize_table("fact_customer_feedback", ["date_key"]) 
+            self._optimize_table("fact_customer_feedback", ["tower_key"]) 
         else:
             print("Skipping fact_customer_feedback due to missing prerequisites.")
 
@@ -951,6 +980,7 @@ class TelkomSilverToGold:
         spark.sql(f"""
         CREATE TABLE IF NOT EXISTS {self.catalog}.fact_maintenance_activity (
             technician_key BIGINT,
+            tower_key BIGINT,
             date_key INT,
             hour_key INT,
             ts_utc TIMESTAMP,
@@ -966,7 +996,15 @@ class TelkomSilverToGold:
             vt_silver = spark.read.table(f"{self.catalog}.voice_transcriptions").alias("vt")
             dim_technician = spark.read.table(f"{self.catalog}.dim_technician").alias("dtech")
             dim_date = spark.read.table(f"{self.catalog}.dim_date").alias("dd")
-            fact_maintenance = vt_silver \
+            # Optional tower join when tower_sk is available
+            join_tower_vt = self._validate_columns("voice_transcriptions", ["tower_sk"]) and self._table_exists("dim_tower")
+            if join_tower_vt:
+                dim_tower_cur = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                vt_enriched = vt_silver.join(dim_tower_cur, col("vt.tower_sk") == col("dt.tower_sk"), "left")
+            else:
+                vt_enriched = vt_silver.withColumn("tower_key", lit(None).cast("bigint"))
+            tower_key_col_vt = col("dt.tower_key") if join_tower_vt else col("tower_key")
+            fact_maintenance = vt_enriched \
                 .join(dim_technician, col("vt.technician_sk") == col("dtech.technician_sk"), "inner") \
                 .join(dim_date, (col("vt.date_key") == col("dd.date_key")) & (col("vt.hour_key") == col("dd.hour_key")), "inner") \
                 .withColumn("activity_type", 
@@ -975,7 +1013,7 @@ class TelkomSilverToGold:
                     .when(col("transcription").contains("ESCALATE"), "Escalation")
                     .otherwise("Other")) \
                 .select(
-                    col("dtech.technician_key").alias("technician_key"), col("vt.date_key"), col("vt.hour_key"),
+                    col("dtech.technician_key").alias("technician_key"), tower_key_col_vt.alias("tower_key"), col("vt.date_key"), col("vt.hour_key"),
                     col("vt.ts_utc"), col("vt.transcription"), col("activity_type"),
                     current_timestamp().alias("created_at")
                 )
@@ -983,11 +1021,11 @@ class TelkomSilverToGold:
             spark.sql(f"""
             MERGE INTO {self.catalog}.fact_maintenance_activity t
             USING (SELECT * FROM stg_fact_maintenance) s
-            ON t.technician_key = s.technician_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc
+            ON t.technician_key = s.technician_key AND t.tower_key <=> s.tower_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc
             WHEN MATCHED THEN UPDATE SET *
             WHEN NOT MATCHED THEN INSERT *
             """)
-            self._optimize_table("fact_maintenance_activity", ["date_key"]) 
+            self._optimize_table("fact_maintenance_activity", ["technician_key", "tower_key"]) 
         else:
             print("Skipping population of fact_maintenance_activity due to missing prerequisites.")
 
@@ -1052,6 +1090,35 @@ class TelkomSilverToGold:
         LEFT JOIN {self.catalog}.fact_customer_feedback fcf ON fcu.date_key = fcf.date_key AND fcu.hour_key = fcf.hour_key
         GROUP BY fcu.date_key, fcu.hour_key, dc.customer_segment, dc.customer_type, dc.usage_category
         """)
+
+        # agg_hourly_usage_by_tower (new, tower-aware usage summary)
+        if self._table_exists("fact_customer_usage"):
+            self._drop_if_stale_location("agg_hourly_usage_by_tower", self.gold_path)
+            loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_hourly_usage_by_tower'"
+            spark.sql(f"""
+            CREATE OR REPLACE TABLE {self.catalog}.agg_hourly_usage_by_tower
+            USING DELTA
+            {loc_clause}
+            PARTITIONED BY (date_key)
+            AS
+            SELECT
+                fcu.date_key, fcu.hour_key, dt.tower_key, dt.tower_id, dr.region,
+                COUNT(DISTINCT fcu.customer_key) as active_customers,
+                SUM(fcu.data_usage_mb) as total_data_usage_mb,
+                SUM(fcu.call_duration_minutes) as total_call_minutes,
+                SUM(fcu.estimated_revenue_zar) as total_estimated_revenue,
+                AVG(fcu.data_usage_mb) as avg_data_usage_per_customer,
+                AVG(fcu.call_duration_minutes) as avg_call_duration_per_customer,
+                AVG(fcu.estimated_revenue_zar) as avg_revenue_per_customer,
+                SUM(fcu.heavy_user_flag) as heavy_users_count,
+                current_timestamp() as created_at
+            FROM {self.catalog}.fact_customer_usage fcu
+            LEFT JOIN {self.catalog}.dim_tower dt ON fcu.tower_key = dt.tower_key AND dt.is_current = true
+            LEFT JOIN {self.catalog}.dim_region dr ON dt.region_key = dr.region_key
+            GROUP BY fcu.date_key, fcu.hour_key, dt.tower_key, dt.tower_id, dr.region
+            """)
+        else:
+            print("agg_hourly_usage_by_tower skipped: fact_customer_usage not found.")
 
         # agg_regional_performance
         self._drop_if_stale_location("agg_regional_performance", self.gold_path)
