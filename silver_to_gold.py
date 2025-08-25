@@ -164,7 +164,7 @@ class TelkomSilverToGold:
             spark.sql("USE CATALOG main")
         except Exception:
             pass
-        self.catalog = "telkom_analytics"
+        self.catalog = "TelkomDW"
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {self.catalog}")
         spark.sql(f"USE SCHEMA {self.catalog}")
 
@@ -351,7 +351,7 @@ class TelkomSilverToGold:
                 .withColumn("is_current", lit(True)) \
                 .withColumn("created_at", current_timestamp()) \
                 .withColumn("updated_at", current_timestamp()) \
-                .withColumn("tower_key", abs(hash(col("tower_sk"))).cast("bigint"))
+                .withColumn("tower_key", F.abs(F.hash(col("tower_sk"))).cast("bigint"))
             towers_silver.createOrReplaceTempView("stg_dim_tower")
             # Phase 1: expire changed current rows
             spark.sql(f"""
@@ -491,13 +491,13 @@ class TelkomSilverToGold:
             cu_silver = spark.read.table(f"{self.catalog}.customer_usage")
             dim_customer = cu_silver.select("customer_sk").distinct() \
                 .withColumn("customer_key", row_number().over(Window.orderBy("customer_sk"))) \
-                .withColumn("customer_type", when(hash(col("customer_sk")) % 100 < 20, "Prepaid").otherwise("Postpaid")) \
-                .withColumn("customer_segment", when(hash(col("customer_sk")) % 100 < 30, "Individual")
-                            .when(hash(col("customer_sk")) % 100 < 60, "Family").otherwise("Business")) \
-                .withColumn("usage_category", when(hash(col("customer_sk")) % 100 < 25, "Light")
-                            .when(hash(col("customer_sk")) % 100 < 70, "Medium").otherwise("Heavy")) \
-                .withColumn("credit_rating", (abs(hash(col("customer_sk"))) % 5 + 1)) \
-                .withColumn("registration_date", date_sub(current_date(), (abs(hash(col("customer_sk"))) % 1095).cast("int"))) \
+                .withColumn("customer_type", when(F.hash(col("customer_sk")) % 100 < 20, "Prepaid").otherwise("Postpaid")) \
+                .withColumn("customer_segment", when(F.hash(col("customer_sk")) % 100 < 30, "Individual")
+                            .when(F.hash(col("customer_sk")) % 100 < 60, "Family").otherwise("Business")) \
+                .withColumn("usage_category", when(F.hash(col("customer_sk")) % 100 < 25, "Light")
+                            .when(F.hash(col("customer_sk")) % 100 < 70, "Medium").otherwise("Heavy")) \
+                .withColumn("credit_rating", (F.abs(F.hash(col("customer_sk"))) % 5 + 1)) \
+                .withColumn("registration_date", date_sub(current_date(), (F.abs(F.hash(col("customer_sk"))) % 1095).cast("int"))) \
                 .withColumn("is_active", lit(True)) \
                 .withColumn("created_at", current_timestamp()) \
                 .withColumn("updated_at", current_timestamp())
@@ -532,7 +532,7 @@ class TelkomSilverToGold:
             vt_silver = spark.read.table(f"{self.catalog}.voice_transcriptions")
             dim_technician = vt_silver.select("technician_sk").distinct() \
                 .withColumn("technician_key", row_number().over(Window.orderBy("technician_sk"))) \
-                .withColumn("role", when(hash(col("technician_sk")) % 100 < 50, "Field Technician").otherwise("Network Engineer")) \
+                .withColumn("role", when(F.hash(col("technician_sk")) % 100 < 50, "Field Technician").otherwise("Network Engineer")) \
                 .withColumn("is_active", lit(True)) \
                 .withColumn("created_at", current_timestamp()) \
                 .withColumn("updated_at", current_timestamp())
@@ -567,7 +567,7 @@ class TelkomSilverToGold:
             mc_silver = spark.read.table(f"{self.catalog}.maintenance_crew")
             dim_crew = mc_silver.select("crew_sk").distinct() \
                 .withColumn("crew_key", row_number().over(Window.orderBy("crew_sk"))) \
-                .withColumn("crew_type", when(hash(col("crew_sk")) % 100 < 50, "Maintenance").otherwise("Emergency")) \
+                .withColumn("crew_type", when(F.hash(col("crew_sk")) % 100 < 50, "Maintenance").otherwise("Emergency")) \
                 .withColumn("is_active", lit(True)) \
                 .withColumn("created_at", current_timestamp()) \
                 .withColumn("updated_at", current_timestamp())
@@ -582,6 +582,161 @@ class TelkomSilverToGold:
             self._optimize_table("dim_crew", ["crew_sk"]) 
         else:
             print("maintenance_crew silver table not found; skipping dim_crew population.")
+
+        # dim_equipment (from network_equipment_inventory)
+        self._drop_if_stale_location("dim_equipment", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/dim_equipment'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.dim_equipment (
+            equipment_key BIGINT,
+            equipment_sk STRING,
+            equipment_id STRING,
+            equipment_type STRING,
+            vendor STRING,
+            model STRING,
+            firmware_version STRING,
+            status STRING,
+            install_date TIMESTAMP,
+            tower_key BIGINT,
+            region_key INT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        ) USING DELTA
+        {loc_clause}
+        """)
+        if self._table_exists("network_equipment_inventory") and self._validate_columns("network_equipment_inventory", [
+            "tower_sk", "region_key"
+        ]):
+            eq = spark.read.table(f"{self.catalog}.network_equipment_inventory").alias("eq")
+            # Flexible id columns
+            eq = eq.withColumn("equipment_sk", coalesce(col("equipment_sk"), col("equipment_id"))) \
+                   .withColumn("equipment_id", coalesce(col("equipment_id"), col("equipment_sk")))
+            join_ok = self._table_exists("dim_tower")
+            if join_ok:
+                dt = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                eq = eq.join(dt, col("eq.tower_sk") == col("dt.tower_sk"), "left")
+                tower_key_col = col("dt.tower_key")
+            else:
+                eq = eq.withColumn("tower_key", lit(None).cast("bigint"))
+                tower_key_col = col("tower_key")
+            dim_equipment = eq.select(
+                F.abs(F.hash(coalesce(col("equipment_sk"), col("equipment_id")))).cast("bigint").alias("equipment_key"),
+                col("equipment_sk"), col("equipment_id"), col("equipment_type"), col("vendor"), col("model"),
+                col("firmware_version"), col("status"), col("install_date").cast("timestamp").alias("install_date"),
+                tower_key_col.alias("tower_key"), col("region_key"),
+                current_timestamp().alias("created_at"), current_timestamp().alias("updated_at")
+            ).dropDuplicates(["equipment_sk"]) 
+            dim_equipment.createOrReplaceTempView("stg_dim_equipment")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.dim_equipment t
+            USING (SELECT * FROM stg_dim_equipment) s
+            ON t.equipment_sk <=> s.equipment_sk
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("dim_equipment", ["equipment_key", "tower_key"]) 
+        else:
+            print("network_equipment_inventory silver table not found; skipping dim_equipment population.")
+
+        # dim_service (from customer_service_records)
+        self._drop_if_stale_location("dim_service", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/dim_service'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.dim_service (
+            service_type_key BIGINT,
+            service_type STRING,
+            channel STRING,
+            issue_category STRING,
+            priority STRING,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        ) USING DELTA
+        {loc_clause}
+        """)
+        if self._table_exists("customer_service_records") and self._validate_columns("customer_service_records", ["service_type", "channel", "issue_category"]):
+            csr = spark.read.table(f"{self.catalog}.customer_service_records")
+            dim_service = csr.select(
+                F.abs(F.hash(coalesce(col("service_type"), lit("")), coalesce(col("channel"), lit("")), coalesce(col("issue_category"), lit("")))).cast("bigint").alias("service_type_key"),
+                col("service_type"), col("channel"), col("issue_category"), coalesce(col("priority"), lit("Normal")).alias("priority"),
+                current_timestamp().alias("created_at"), current_timestamp().alias("updated_at")
+            ).dropDuplicates(["service_type_key"]) 
+            dim_service.createOrReplaceTempView("stg_dim_service")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.dim_service t
+            USING (SELECT * FROM stg_dim_service) s
+            ON t.service_type_key = s.service_type_key
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("dim_service", ["service_type_key"]) 
+        else:
+            print("customer_service_records silver table not found; skipping dim_service population.")
+
+        # dim_compliance_domain (from regulatory_compliance_data)
+        self._drop_if_stale_location("dim_compliance_domain", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/dim_compliance_domain'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.dim_compliance_domain (
+            domain_key BIGINT,
+            domain STRING,
+            rule_code STRING,
+            severity_category STRING,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        ) USING DELTA
+        {loc_clause}
+        """)
+        if self._table_exists("regulatory_compliance_data") and self._validate_columns("regulatory_compliance_data", ["domain"]):
+            rc = spark.read.table(f"{self.catalog}.regulatory_compliance_data")
+            dim_dom = rc.select(
+                F.abs(F.hash(coalesce(col("domain"), lit("")), coalesce(col("rule_code"), lit("")))).cast("bigint").alias("domain_key"),
+                col("domain"), col("rule_code"), coalesce(col("severity_category"), lit("LOW")).alias("severity_category"),
+                current_timestamp().alias("created_at"), current_timestamp().alias("updated_at")
+            ).dropDuplicates(["domain_key"]) 
+            dim_dom.createOrReplaceTempView("stg_dim_compliance_domain")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.dim_compliance_domain t
+            USING (SELECT * FROM stg_dim_compliance_domain) s
+            ON t.domain_key = s.domain_key
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("dim_compliance_domain", ["domain_key"]) 
+        else:
+            print("regulatory_compliance_data silver table not found; skipping dim_compliance_domain population.")
+
+        # dim_competitor (from competitor_analysis_data)
+        self._drop_if_stale_location("dim_competitor", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/dim_competitor'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.dim_competitor (
+            competitor_key BIGINT,
+            competitor_name STRING,
+            product STRING,
+            plan STRING,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        ) USING DELTA
+        {loc_clause}
+        """)
+        if self._table_exists("competitor_analysis_data") and self._validate_columns("competitor_analysis_data", ["competitor_name"]):
+            comp = spark.read.table(f"{self.catalog}.competitor_analysis_data")
+            dim_comp = comp.select(
+                F.abs(F.hash(coalesce(col("competitor_name"), lit("")), coalesce(col("product"), lit("")), coalesce(col("plan"), lit("")))).cast("bigint").alias("competitor_key"),
+                col("competitor_name"), col("product"), col("plan"),
+                current_timestamp().alias("created_at"), current_timestamp().alias("updated_at")
+            ).dropDuplicates(["competitor_key"]) 
+            dim_comp.createOrReplaceTempView("stg_dim_competitor")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.dim_competitor t
+            USING (SELECT * FROM stg_dim_competitor) s
+            ON t.competitor_key = s.competitor_key
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("dim_competitor", ["competitor_key"]) 
+        else:
+            print("competitor_analysis_data silver table not found; skipping dim_competitor population.")
 
     def create_fact_tables(self):
         print("Creating fact tables…")
@@ -616,14 +771,14 @@ class TelkomSilverToGold:
         {loc_clause}
         """)
         if (
-            self._table_exists("network_logs") and
-            self._validate_columns("network_logs", [
+            self._table_exists("network_performance_telemetry") and
+            self._validate_columns("network_performance_telemetry", [
                 "tower_sk", "region_key", "date_key", "hour_key", "ts_utc",
                 "signal_strength", "latency_ms", "uptime", "error_code", "performance_category"
             ]) and
             self._table_exists("dim_tower") and self._table_exists("dim_date")
         ):
-            nw_silver = spark.read.table(f"{self.catalog}.network_logs").alias("n")
+            nw_silver = spark.read.table(f"{self.catalog}.network_performance_telemetry").alias("n")
             dim_tower_cur = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
             dim_date = spark.read.table(f"{self.catalog}.dim_date").alias("dd")
             df = nw_silver.join(dim_tower_cur, col("n.tower_sk") == col("dt.tower_sk"), "inner") \
@@ -1029,6 +1184,399 @@ class TelkomSilverToGold:
         else:
             print("Skipping population of fact_maintenance_activity due to missing prerequisites.")
 
+        # fact_equipment_inventory_snapshot (from network_equipment_inventory)
+        self._drop_if_stale_location("fact_equipment_inventory_snapshot", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_equipment_inventory_snapshot'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_equipment_inventory_snapshot (
+            equipment_key BIGINT,
+            tower_key BIGINT,
+            region_key INT,
+            date_key INT,
+            ts_utc TIMESTAMP,
+            equipment_type STRING,
+            vendor STRING,
+            model STRING,
+            firmware_version STRING,
+            status STRING,
+            age_days INT,
+            warranty_remaining_days INT,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("network_equipment_inventory") and self._validate_columns("network_equipment_inventory", ["tower_sk", "region_key", "equipment_type"]):
+            eq = spark.read.table(f"{self.catalog}.network_equipment_inventory").alias("eq")
+            eq = eq.withColumn("equipment_sk", coalesce(col("equipment_sk"), col("equipment_id")))
+            join_ok = self._table_exists("dim_tower")
+            if join_ok:
+                dt = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                eq = eq.join(dt, col("eq.tower_sk") == col("dt.tower_sk"), "left")
+                tower_key_col = col("dt.tower_key")
+            else:
+                eq = eq.withColumn("tower_key", lit(None).cast("bigint"))
+                tower_key_col = col("tower_key")
+            ts_col = coalesce(col("ts_utc"), col("updated_at").cast("timestamp"), current_timestamp())
+            feq = eq.select(
+                F.abs(F.hash(col("equipment_sk"))).cast("bigint").alias("equipment_key"),
+                tower_key_col.alias("tower_key"), col("region_key"),
+                date_format(ts_col, "yyyyMMdd").cast("int").alias("date_key"),
+                ts_col.alias("ts_utc"),
+                col("equipment_type"), col("vendor"), col("model"), col("firmware_version"), col("status"),
+                (F.datediff(current_timestamp(), col("install_date").cast("timestamp"))).cast("int").alias("age_days"),
+                (F.datediff(col("warranty_expiry_date").cast("timestamp"), current_timestamp())).cast("int").alias("warranty_remaining_days"),
+                current_timestamp().alias("created_at")
+            )
+            feq_dedup = feq.groupBy("equipment_key", "tower_key", "date_key").agg(
+                F.max("ts_utc").alias("ts_utc"),
+                F.max("region_key").alias("region_key"),
+                F.max("equipment_type").alias("equipment_type"),
+                F.max("vendor").alias("vendor"),
+                F.max("model").alias("model"),
+                F.max("firmware_version").alias("firmware_version"),
+                F.max("status").alias("status"),
+                F.max("age_days").alias("age_days"),
+                F.max("warranty_remaining_days").alias("warranty_remaining_days"),
+                F.max("created_at").alias("created_at")
+            )
+            feq_dedup.createOrReplaceTempView("stg_fact_equipment_snapshot")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_equipment_inventory_snapshot t
+            USING (SELECT * FROM stg_fact_equipment_snapshot) s
+            ON t.equipment_key = s.equipment_key AND t.date_key = s.date_key AND t.tower_key <=> s.tower_key
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_equipment_inventory_snapshot", ["equipment_key", "tower_key"]) 
+        else:
+            print("Skipping fact_equipment_inventory_snapshot due to missing prerequisites.")
+
+        # fact_service_interactions (from customer_service_records)
+        self._drop_if_stale_location("fact_service_interactions", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_service_interactions'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_service_interactions (
+            customer_key BIGINT,
+            service_type_key BIGINT,
+            region_key INT,
+            date_key INT,
+            hour_key INT,
+            ts_utc TIMESTAMP,
+            channel STRING,
+            issue_category STRING,
+            response_time_s DOUBLE,
+            resolution_time_s DOUBLE,
+            resolved_flag INT,
+            escalation_flag INT,
+            sentiment_score DOUBLE,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("customer_service_records") and self._validate_columns("customer_service_records", ["customer_sk", "date_key", "hour_key", "ts_utc", "channel", "issue_category"]):
+            csr = spark.read.table(f"{self.catalog}.customer_service_records").alias("csr")
+            dc = spark.read.table(f"{self.catalog}.dim_customer").alias("dc") if self._table_exists("dim_customer") else None
+            ds = spark.read.table(f"{self.catalog}.dim_service").alias("ds") if self._table_exists("dim_service") else None
+            df_join = csr
+            if dc is not None:
+                df_join = df_join.join(dc, col("csr.customer_sk") == col("dc.customer_sk"), "left")
+            if ds is not None:
+                svc_key_expr = F.abs(F.hash(coalesce(col("csr.service_type"), lit("")), coalesce(col("csr.channel"), lit("")), coalesce(col("csr.issue_category"), lit("")))).cast("bigint")
+                df_join = df_join.join(ds, svc_key_expr == col("ds.service_type_key"), "left")
+            fact_si = df_join.select(
+                (col("dc.customer_key") if dc is not None else lit(None).cast("bigint")).alias("customer_key"),
+                (col("ds.service_type_key") if ds is not None else F.abs(F.hash(coalesce(col("csr.service_type"), lit("")), coalesce(col("csr.channel"), lit("")), coalesce(col("csr.issue_category"), lit("")))).cast("bigint")).alias("service_type_key"),
+                col("csr.region_key"), col("csr.date_key"), col("csr.hour_key"), col("csr.ts_utc"),
+                col("csr.channel"), col("csr.issue_category"),
+                col("csr.response_time_s").cast("double").alias("response_time_s"),
+                col("csr.resolution_time_s").cast("double").alias("resolution_time_s"),
+                when(col("csr.resolved_flag") == True, lit(1)).otherwise(col("csr.resolved_flag").cast("int")).alias("resolved_flag"),
+                when(col("csr.escalation_flag") == True, lit(1)).otherwise(col("csr.escalation_flag").cast("int")).alias("escalation_flag"),
+                col("csr.sentiment_score").cast("double").alias("sentiment_score"),
+                current_timestamp().alias("created_at")
+            )
+            fact_si_dedup = fact_si.groupBy("customer_key", "service_type_key", "date_key", "hour_key", "ts_utc").agg(
+                F.max("region_key").alias("region_key"),
+                F.max("channel").alias("channel"),
+                F.max("issue_category").alias("issue_category"),
+                F.avg("response_time_s").alias("response_time_s"),
+                F.avg("resolution_time_s").alias("resolution_time_s"),
+                F.max("resolved_flag").alias("resolved_flag"),
+                F.max("escalation_flag").alias("escalation_flag"),
+                F.avg("sentiment_score").alias("sentiment_score"),
+                F.max("created_at").alias("created_at")
+            )
+            fact_si_dedup.createOrReplaceTempView("stg_fact_service_interactions")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_service_interactions t
+            USING (SELECT * FROM stg_fact_service_interactions) s
+            ON t.customer_key <=> s.customer_key AND t.service_type_key = s.service_type_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_service_interactions", ["customer_key", "service_type_key"]) 
+        else:
+            print("Skipping fact_service_interactions due to missing prerequisites.")
+
+        # fact_network_traffic (from network_traffic_analytics)
+        self._drop_if_stale_location("fact_network_traffic", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_network_traffic'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_network_traffic (
+            tower_key BIGINT,
+            date_key INT,
+            hour_key INT,
+            ts_utc TIMESTAMP,
+            bytes_in BIGINT,
+            bytes_out BIGINT,
+            packets BIGINT,
+            protocol STRING,
+            direction STRING,
+            flow_count BIGINT,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("network_traffic_analytics") and self._validate_columns("network_traffic_analytics", ["date_key", "hour_key", "ts_utc"]):
+            nta = spark.read.table(f"{self.catalog}.network_traffic_analytics").alias("nt")
+            if self._validate_columns("network_traffic_analytics", ["tower_sk"]) and self._table_exists("dim_tower"):
+                dt = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                nta = nta.join(dt, col("nt.tower_sk") == col("dt.tower_sk"), "left")
+                tower_key_col = col("dt.tower_key")
+            else:
+                nta = nta.withColumn("tower_key", lit(None).cast("bigint"))
+                tower_key_col = col("tower_key")
+            fnt = nta.select(
+                tower_key_col.alias("tower_key"), col("nt.date_key"), col("nt.hour_key"), col("nt.ts_utc"),
+                col("nt.bytes_in").cast("bigint").alias("bytes_in"), col("nt.bytes_out").cast("bigint").alias("bytes_out"),
+                col("nt.packets").cast("bigint").alias("packets"), col("nt.protocol"), col("nt.direction"), col("nt.flow_count").cast("bigint").alias("flow_count"),
+                current_timestamp().alias("created_at")
+            )
+            fnt_dedup = fnt.groupBy("tower_key", "date_key", "hour_key", "ts_utc").agg(
+                F.sum("bytes_in").alias("bytes_in"),
+                F.sum("bytes_out").alias("bytes_out"),
+                F.sum("packets").alias("packets"),
+                F.max("protocol").alias("protocol"),
+                F.max("direction").alias("direction"),
+                F.sum("flow_count").alias("flow_count"),
+                F.max("created_at").alias("created_at")
+            )
+            fnt_dedup.createOrReplaceTempView("stg_fact_network_traffic")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_network_traffic t
+            USING (SELECT * FROM stg_fact_network_traffic) s
+            ON t.tower_key <=> s.tower_key AND t.date_key = s.date_key AND t.hour_key = s.hour_key AND t.ts_utc = s.ts_utc
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_network_traffic", ["tower_key"]) 
+        else:
+            print("Skipping fact_network_traffic due to missing prerequisites.")
+
+        # fact_billing (from financial_billing_data)
+        self._drop_if_stale_location("fact_billing", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_billing'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_billing (
+            customer_key BIGINT,
+            region_key INT,
+            date_key INT,
+            invoice_id STRING,
+            amount_zar DOUBLE,
+            tax_zar DOUBLE,
+            discount_zar DOUBLE,
+            net_amount_zar DOUBLE,
+            paid_flag INT,
+            overdue_days INT,
+            plan_name STRING,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("financial_billing_data") and self._validate_columns("financial_billing_data", ["customer_sk", "date_key", "invoice_id", "amount_zar"]):
+            fbd = spark.read.table(f"{self.catalog}.financial_billing_data").alias("fb")
+            if self._table_exists("dim_customer"):
+                dc = spark.read.table(f"{self.catalog}.dim_customer").alias("dc")
+                fbd = fbd.join(dc, col("fb.customer_sk") == col("dc.customer_sk"), "left")
+            fb_fact = fbd.select(
+                (col("dc.customer_key") if self._table_exists("dim_customer") else lit(None).cast("bigint")).alias("customer_key"),
+                col("fb.region_key"), col("fb.date_key"), col("fb.invoice_id"),
+                col("fb.amount_zar").cast("double").alias("amount_zar"),
+                coalesce(col("fb.tax_zar"), lit(0.0)).cast("double").alias("tax_zar"),
+                coalesce(col("fb.discount_zar"), lit(0.0)).cast("double").alias("discount_zar"),
+                coalesce(col("fb.net_amount_zar"), (col("fb.amount_zar") + coalesce(col("fb.tax_zar"), lit(0.0)) - coalesce(col("fb.discount_zar"), lit(0.0)))).cast("double").alias("net_amount_zar"),
+                when(col("fb.paid_flag") == True, lit(1)).otherwise(col("fb.paid_flag").cast("int")).alias("paid_flag"),
+                col("fb.overdue_days").cast("int").alias("overdue_days"),
+                col("fb.plan_name"),
+                current_timestamp().alias("created_at")
+            )
+            fb_fact.createOrReplaceTempView("stg_fact_billing")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_billing t
+            USING (SELECT * FROM stg_fact_billing) s
+            ON t.invoice_id = s.invoice_id
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_billing", ["customer_key"]) 
+        else:
+            print("Skipping fact_billing due to missing prerequisites.")
+
+        # fact_maintenance_workorders (from network_maintenance_records)
+        self._drop_if_stale_location("fact_maintenance_workorders", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_maintenance_workorders'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_maintenance_workorders (
+            workorder_id STRING,
+            tower_key BIGINT,
+            region_key INT,
+            date_key INT,
+            hour_key INT,
+            ts_utc TIMESTAMP,
+            work_type STRING,
+            status STRING,
+            duration_min DOUBLE,
+            cost_zar DOUBLE,
+            crew_key BIGINT,
+            technician_key BIGINT,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("network_maintenance_records") and self._validate_columns("network_maintenance_records", ["workorder_id", "date_key"]):
+            nmr = spark.read.table(f"{self.catalog}.network_maintenance_records").alias("nm")
+            if self._validate_columns("network_maintenance_records", ["tower_sk"]) and self._table_exists("dim_tower"):
+                dt = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                nmr = nmr.join(dt, col("nm.tower_sk") == col("dt.tower_sk"), "left")
+                tower_key_col = col("dt.tower_key")
+            else:
+                nmr = nmr.withColumn("tower_key", lit(None).cast("bigint"))
+                tower_key_col = col("tower_key")
+            if self._validate_columns("network_maintenance_records", ["crew_sk"]) and self._table_exists("dim_crew"):
+                dcrew = spark.read.table(f"{self.catalog}.dim_crew").alias("dcr")
+                nmr = nmr.join(dcrew, col("nm.crew_sk") == col("dcr.crew_sk"), "left")
+            if self._validate_columns("network_maintenance_records", ["technician_sk"]) and self._table_exists("dim_technician"):
+                dtech = spark.read.table(f"{self.catalog}.dim_technician").alias("dte")
+                nmr = nmr.join(dtech, col("nm.technician_sk") == col("dte.technician_sk"), "left")
+            fwo = nmr.select(
+                col("nm.workorder_id"), tower_key_col.alias("tower_key"), col("nm.region_key"),
+                col("nm.date_key"), coalesce(col("nm.hour_key"), lit(0)).cast("int").alias("hour_key"),
+                coalesce(col("nm.ts_utc"), current_timestamp()).alias("ts_utc"),
+                col("nm.work_type"), col("nm.status"), col("nm.duration_min").cast("double").alias("duration_min"),
+                col("nm.cost_zar").cast("double").alias("cost_zar"),
+                col("dcr.crew_key").cast("bigint").alias("crew_key"),
+                col("dte.technician_key").cast("bigint").alias("technician_key"),
+                current_timestamp().alias("created_at")
+            )
+            fwo.createOrReplaceTempView("stg_fact_maintenance_workorders")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_maintenance_workorders t
+            USING (SELECT * FROM stg_fact_maintenance_workorders) s
+            ON t.workorder_id = s.workorder_id
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_maintenance_workorders", ["tower_key", "region_key"]) 
+        else:
+            print("Skipping fact_maintenance_workorders due to missing prerequisites.")
+
+        # fact_compliance_events (from regulatory_compliance_data)
+        self._drop_if_stale_location("fact_compliance_events", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_compliance_events'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_compliance_events (
+            domain_key BIGINT,
+            region_key INT,
+            tower_key BIGINT,
+            date_key INT,
+            ts_utc TIMESTAMP,
+            severity STRING,
+            status STRING,
+            finding_count INT,
+            remediation_deadline TIMESTAMP,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("regulatory_compliance_data") and self._validate_columns("regulatory_compliance_data", ["domain", "region_key"]):
+            rc = spark.read.table(f"{self.catalog}.regulatory_compliance_data").alias("rc")
+            dom_key = F.abs(F.hash(coalesce(col("rc.domain"), lit("")), coalesce(col("rc.rule_code"), lit("")))).cast("bigint")
+            if self._validate_columns("regulatory_compliance_data", ["tower_sk"]) and self._table_exists("dim_tower"):
+                dt = spark.read.table(f"{self.catalog}.dim_tower").filter(col("is_current") == True).alias("dt")
+                rc = rc.join(dt, col("rc.tower_sk") == col("dt.tower_sk"), "left")
+                tower_key_col = col("dt.tower_key")
+            else:
+                rc = rc.withColumn("tower_key", lit(None).cast("bigint"))
+                tower_key_col = col("tower_key")
+            ts_col = coalesce(col("rc.ts_utc"), current_timestamp())
+            fce = rc.select(
+                dom_key.alias("domain_key"), col("rc.region_key"), tower_key_col.alias("tower_key"),
+                date_format(ts_col, "yyyyMMdd").cast("int").alias("date_key"), ts_col.alias("ts_utc"),
+                coalesce(col("rc.severity"), lit("LOW")).alias("severity"), coalesce(col("rc.status"), lit("OPEN")).alias("status"),
+                coalesce(col("rc.finding_count"), lit(1)).cast("int").alias("finding_count"),
+                col("rc.remediation_deadline").cast("timestamp").alias("remediation_deadline"),
+                current_timestamp().alias("created_at")
+            )
+            fce.createOrReplaceTempView("stg_fact_compliance_events")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_compliance_events t
+            USING (SELECT * FROM stg_fact_compliance_events) s
+            ON t.domain_key = s.domain_key AND t.date_key = s.date_key AND t.region_key = s.region_key AND t.ts_utc = s.ts_utc
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_compliance_events", ["domain_key", "region_key"]) 
+        else:
+            print("Skipping fact_compliance_events due to missing prerequisites.")
+
+        # fact_competitor_benchmarks (from competitor_analysis_data)
+        self._drop_if_stale_location("fact_competitor_benchmarks", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/fact_competitor_benchmarks'"
+        spark.sql(f"""
+        CREATE TABLE IF NOT EXISTS {self.catalog}.fact_competitor_benchmarks (
+            competitor_key BIGINT,
+            region_key INT,
+            date_key INT,
+            download_mbps DOUBLE,
+            upload_mbps DOUBLE,
+            price_index DOUBLE,
+            coverage_score DOUBLE,
+            sample_count BIGINT,
+            created_at TIMESTAMP
+        ) USING DELTA
+        PARTITIONED BY (date_key)
+        {loc_clause}
+        """)
+        if self._table_exists("competitor_analysis_data") and self._validate_columns("competitor_analysis_data", ["competitor_name", "region_key", "date_key"]):
+            cad = spark.read.table(f"{self.catalog}.competitor_analysis_data").alias("ca")
+            comp_key = F.abs(F.hash(coalesce(col("ca.competitor_name"), lit("")), coalesce(col("ca.product"), lit("")), coalesce(col("ca.plan"), lit("")))).cast("bigint")
+            fcb = cad.select(
+                comp_key.alias("competitor_key"), col("ca.region_key"), col("ca.date_key"),
+                col("ca.download_mbps").cast("double").alias("download_mbps"),
+                col("ca.upload_mbps").cast("double").alias("upload_mbps"),
+                col("ca.price_index").cast("double").alias("price_index"),
+                col("ca.coverage_score").cast("double").alias("coverage_score"),
+                coalesce(col("ca.sample_count"), lit(0)).cast("bigint").alias("sample_count"),
+                current_timestamp().alias("created_at")
+            )
+            fcb.createOrReplaceTempView("stg_fact_competitor_benchmarks")
+            spark.sql(f"""
+            MERGE INTO {self.catalog}.fact_competitor_benchmarks t
+            USING (SELECT * FROM stg_fact_competitor_benchmarks) s
+            ON t.competitor_key = s.competitor_key AND t.date_key = s.date_key AND t.region_key = s.region_key
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+            """)
+            self._optimize_table("fact_competitor_benchmarks", ["competitor_key", "region_key"]) 
+        else:
+            print("Skipping fact_competitor_benchmarks due to missing prerequisites.")
+
     def create_aggregate_tables(self):
         print("Creating aggregate tables…")
 
@@ -1166,6 +1714,129 @@ class TelkomSilverToGold:
         else:
             print("agg_crew_availability skipped: maintenance_crew table not found.")
 
+        # agg_equipment_health_daily
+        self._drop_if_stale_location("agg_equipment_health_daily", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_equipment_health_daily'"
+        spark.sql(f"""
+        CREATE OR REPLACE TABLE {self.catalog}.agg_equipment_health_daily
+        USING DELTA
+        {loc_clause}
+        PARTITIONED BY (date_key)
+        AS
+        SELECT
+            feis.date_key, feis.region_key, feis.tower_key, de.equipment_type,
+            COUNT(*) AS equipment_count,
+            SUM(CASE WHEN lower(coalesce(feis.status, '')) IN ('active','up','ok') THEN 1 ELSE 0 END) AS active_count,
+            SUM(CASE WHEN lower(coalesce(feis.status, '')) IN ('down','failed','error') THEN 1 ELSE 0 END) AS down_count,
+            SUM(CASE WHEN de.firmware_version IS NULL OR de.firmware_version = '' THEN 1 ELSE 0 END) AS firmware_unknown,
+            current_timestamp() AS created_at
+        FROM {self.catalog}.fact_equipment_inventory_snapshot feis
+        LEFT JOIN {self.catalog}.dim_equipment de ON feis.equipment_key = de.equipment_key
+        GROUP BY feis.date_key, feis.region_key, feis.tower_key, de.equipment_type
+        """)
+
+        # agg_billing_revenue_daily
+        self._drop_if_stale_location("agg_billing_revenue_daily", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_billing_revenue_daily'"
+        spark.sql(f"""
+        CREATE OR REPLACE TABLE {self.catalog}.agg_billing_revenue_daily
+        USING DELTA
+        {loc_clause}
+        PARTITIONED BY (date_key)
+        AS
+        SELECT
+            fb.date_key, fb.region_key,
+            SUM(fb.net_amount_zar) AS total_revenue_zar,
+            SUM(CASE WHEN fb.paid_flag = 1 THEN fb.net_amount_zar ELSE 0 END) AS paid_revenue_zar,
+            SUM(CASE WHEN fb.paid_flag = 0 THEN fb.net_amount_zar ELSE 0 END) AS unpaid_revenue_zar,
+            COUNT(DISTINCT fb.invoice_id) AS invoice_count,
+            SUM(CASE WHEN fb.paid_flag = 0 THEN 1 ELSE 0 END) AS unpaid_invoice_count,
+            current_timestamp() AS created_at
+        FROM {self.catalog}.fact_billing fb
+        GROUP BY fb.date_key, fb.region_key
+        """)
+
+        # agg_traffic_daily_by_tower
+        self._drop_if_stale_location("agg_traffic_daily_by_tower", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_traffic_daily_by_tower'"
+        spark.sql(f"""
+        CREATE OR REPLACE TABLE {self.catalog}.agg_traffic_daily_by_tower
+        USING DELTA
+        {loc_clause}
+        PARTITIONED BY (date_key)
+        AS
+        SELECT
+            fnt.date_key, fnt.tower_key,
+            SUM(fnt.bytes_in) AS total_bytes_in,
+            SUM(fnt.bytes_out) AS total_bytes_out,
+            SUM(fnt.packets) AS total_packets,
+            SUM(fnt.flow_count) AS total_flows,
+            current_timestamp() AS created_at
+        FROM {self.catalog}.fact_network_traffic fnt
+        GROUP BY fnt.date_key, fnt.tower_key
+        """)
+
+        # agg_service_experience_daily
+        self._drop_if_stale_location("agg_service_experience_daily", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_service_experience_daily'"
+        spark.sql(f"""
+        CREATE OR REPLACE TABLE {self.catalog}.agg_service_experience_daily
+        USING DELTA
+        {loc_clause}
+        PARTITIONED BY (date_key)
+        AS
+        SELECT
+            fsi.date_key, fsi.region_key, fsi.service_type_key,
+            AVG(fsi.response_time_s) AS avg_response_time_s,
+            AVG(fsi.resolution_time_s) AS avg_resolution_time_s,
+            AVG(CASE WHEN fsi.resolved_flag = 1 THEN 1.0 ELSE 0.0 END) AS resolution_rate,
+            AVG(CASE WHEN fsi.escalation_flag = 1 THEN 1.0 ELSE 0.0 END) AS escalation_rate,
+            AVG(fsi.sentiment_score) AS avg_sentiment_score,
+            current_timestamp() AS created_at
+        FROM {self.catalog}.fact_service_interactions fsi
+        GROUP BY fsi.date_key, fsi.region_key, fsi.service_type_key
+        """)
+
+        # agg_compliance_risk_daily
+        self._drop_if_stale_location("agg_compliance_risk_daily", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_compliance_risk_daily'"
+        spark.sql(f"""
+        CREATE OR REPLACE TABLE {self.catalog}.agg_compliance_risk_daily
+        USING DELTA
+        {loc_clause}
+        PARTITIONED BY (date_key)
+        AS
+        SELECT
+            fce.date_key, fce.region_key, fce.domain_key,
+            SUM(fce.finding_count) AS total_findings,
+            SUM(CASE WHEN fce.status <> 'RESOLVED' AND fce.remediation_deadline IS NOT NULL AND fce.remediation_deadline < current_timestamp() THEN fce.finding_count ELSE 0 END) AS overdue_findings,
+            SUM(CASE WHEN upper(fce.severity) IN ('HIGH','CRITICAL') THEN fce.finding_count ELSE 0 END) AS high_severity_findings,
+            current_timestamp() AS created_at
+        FROM {self.catalog}.fact_compliance_events fce
+        GROUP BY fce.date_key, fce.region_key, fce.domain_key
+        """)
+
+        # agg_competitive_position_daily
+        self._drop_if_stale_location("agg_competitive_position_daily", self.gold_path)
+        loc_clause = "" if str(self.gold_path).startswith("dbfs:/") else f"LOCATION '{self.gold_path}/agg_competitive_position_daily'"
+        spark.sql(f"""
+        CREATE OR REPLACE TABLE {self.catalog}.agg_competitive_position_daily
+        USING DELTA
+        {loc_clause}
+        PARTITIONED BY (date_key)
+        AS
+        SELECT
+            fcb.date_key, fcb.region_key, fcb.competitor_key,
+            AVG(fcb.download_mbps) AS avg_download_mbps,
+            AVG(fcb.upload_mbps) AS avg_upload_mbps,
+            AVG(fcb.price_index) AS avg_price_index,
+            AVG(fcb.coverage_score) AS avg_coverage_score,
+            SUM(fcb.sample_count) AS sample_count,
+            current_timestamp() AS created_at
+        FROM {self.catalog}.fact_competitor_benchmarks fcb
+        GROUP BY fcb.date_key, fcb.region_key, fcb.competitor_key
+        """)
+
     def create_views(self):
         print("Creating views…")
         # Network health insights view
@@ -1280,14 +1951,89 @@ class TelkomSilverToGold:
         GROUP BY date_key
         """)
 
+        # vw_customer_360
+        if self._table_exists("dim_customer"):
+            spark.sql(f"""
+            CREATE OR REPLACE VIEW {self.catalog}.vw_customer_360 AS
+            WITH latest_usage AS (
+                SELECT customer_key, MAX(struct(date_key, hour_key, ts_utc)) AS mx
+                FROM {self.catalog}.fact_customer_usage
+                GROUP BY customer_key
+            ), lu AS (
+                SELECT u.customer_key, u.data_usage_mb, u.call_duration_minutes, u.estimated_revenue_zar, u.heavy_user_flag
+                FROM {self.catalog}.fact_customer_usage u
+                JOIN latest_usage x ON u.customer_key = x.customer_key AND struct(u.date_key, u.hour_key, u.ts_utc) = x.mx
+            ), latest_bill AS (
+                SELECT customer_key, MAX(struct(date_key, invoice_id)) AS mx FROM {self.catalog}.fact_billing GROUP BY customer_key
+            ), lb AS (
+                SELECT b.customer_key, b.net_amount_zar, b.paid_flag, b.overdue_days, b.plan_name
+                FROM {self.catalog}.fact_billing b
+                JOIN latest_bill x ON b.customer_key = x.customer_key AND struct(b.date_key, b.invoice_id) = x.mx
+            ), latest_si AS (
+                SELECT customer_key, MAX(struct(date_key, hour_key, ts_utc)) AS mx FROM {self.catalog}.fact_service_interactions GROUP BY customer_key
+            ), lsi AS (
+                SELECT s.customer_key, s.response_time_s, s.resolution_time_s, s.resolved_flag, s.escalation_flag, s.sentiment_score
+                FROM {self.catalog}.fact_service_interactions s
+                JOIN latest_si x ON s.customer_key = x.customer_key AND struct(s.date_key, s.hour_key, s.ts_utc) = x.mx
+            )
+            SELECT dc.customer_key, dc.customer_sk, dc.customer_type, dc.customer_segment, dc.usage_category,
+                   lu.data_usage_mb, lu.call_duration_minutes, lu.estimated_revenue_zar, lu.heavy_user_flag,
+                   lb.net_amount_zar AS latest_bill_amount, lb.paid_flag AS latest_bill_paid, lb.overdue_days, lb.plan_name,
+                   lsi.response_time_s, lsi.resolution_time_s, lsi.resolved_flag, lsi.escalation_flag, lsi.sentiment_score
+            FROM {self.catalog}.dim_customer dc
+            LEFT JOIN lu ON dc.customer_key = lu.customer_key
+            LEFT JOIN lb ON dc.customer_key = lb.customer_key
+            LEFT JOIN lsi ON dc.customer_key = lsi.customer_key
+            WHERE dc.is_active = true
+            """)
+
+        # vw_equipment_fleet_health
+        if self._table_exists("dim_equipment") and self._table_exists("fact_equipment_inventory_snapshot"):
+            spark.sql(f"""
+            CREATE OR REPLACE VIEW {self.catalog}.vw_equipment_fleet_health AS
+            SELECT
+                de.equipment_key, de.equipment_sk, de.equipment_id, de.equipment_type, de.vendor, de.model, de.firmware_version,
+                feis.date_key, feis.tower_key, feis.region_key, feis.status, feis.age_days, feis.warranty_remaining_days
+            FROM {self.catalog}.dim_equipment de
+            LEFT JOIN {self.catalog}.fact_equipment_inventory_snapshot feis ON de.equipment_key = feis.equipment_key
+            """)
+
+        # vw_compliance_overview
+        if self._table_exists("agg_compliance_risk_daily"):
+            spark.sql(f"""
+            CREATE OR REPLACE VIEW {self.catalog}.vw_compliance_overview AS
+            SELECT
+                acr.date_key, acr.region_key, dcd.domain, dcd.rule_code, dcd.severity_category,
+                acr.total_findings, acr.overdue_findings, acr.high_severity_findings
+            FROM {self.catalog}.agg_compliance_risk_daily acr
+            LEFT JOIN {self.catalog}.dim_compliance_domain dcd ON acr.domain_key = dcd.domain_key
+            """)
+
+        # vw_competitor_insights
+        if self._table_exists("agg_competitive_position_daily") and self._table_exists("dim_competitor"):
+            spark.sql(f"""
+            CREATE OR REPLACE VIEW {self.catalog}.vw_competitor_insights AS
+            SELECT
+                acp.date_key, acp.region_key, dc.competitor_name, dc.product, dc.plan,
+                acp.avg_download_mbps, acp.avg_upload_mbps, acp.avg_price_index, acp.avg_coverage_score, acp.sample_count
+            FROM {self.catalog}.agg_competitive_position_daily acp
+            JOIN {self.catalog}.dim_competitor dc ON acp.competitor_key = dc.competitor_key
+            """)
+
     def generate_gold_summary(self):
         print("Generating gold layer summary…")
         tables_to_check = [
             "dim_region", "dim_tower", "dim_date", "dim_customer", "dim_technician", "dim_crew",
             "fact_network_performance", "fact_customer_usage", "fact_load_shedding_slots_30min",
             "fact_customer_feedback", "fact_tower_connectivity", "fact_tower_capacity",
-            "fact_maintenance_activity", "agg_daily_network_summary", "agg_hourly_usage_summary",
-            "agg_regional_performance", "agg_crew_availability"
+            "fact_maintenance_activity", "fact_equipment_inventory_snapshot", "fact_service_interactions",
+            "fact_network_traffic", "fact_billing", "fact_maintenance_workorders", "fact_compliance_events",
+            "fact_competitor_benchmarks",
+            "agg_daily_network_summary", "agg_hourly_usage_summary", "agg_hourly_usage_by_tower",
+            "agg_regional_performance", "agg_crew_availability", "agg_equipment_health_daily",
+            "agg_billing_revenue_daily", "agg_traffic_daily_by_tower", "agg_service_experience_daily",
+            "agg_compliance_risk_daily", "agg_competitive_position_daily",
+            "dim_equipment", "dim_service", "dim_compliance_domain", "dim_competitor"
         ]
         table_stats = {}
         for table in tables_to_check:
@@ -1297,14 +2043,17 @@ class TelkomSilverToGold:
                 print(f"- {table}: {count:,} rows")
             except Exception as e:
                 print(f"! Could not get count for {table}: {e}")
-        views_to_check = ["vw_network_health_insights", "vw_maintenance_operations", "vw_data_quality_monitoring"]
+        views_to_check = [
+            "vw_network_health_insights", "vw_maintenance_operations", "vw_data_quality_monitoring",
+            "vw_customer_360", "vw_equipment_fleet_health", "vw_compliance_overview", "vw_competitor_insights"
+        ]
         for view in views_to_check:
             try:
                 count = spark.sql(f"SELECT * FROM {self.catalog}.{view}").count()
                 print(f"- {view}: {count:,} rows")
             except Exception as e:
                 print(f"! Could not get count for {view}: {e}")
-        print("Gold Layer Summary: 17 tables and up to 3 views targeted.")
+        print("Gold Layer Summary: extended tables and views created where source silver data is available.")
 
     def run_silver_to_gold_pipeline(self):
         print("Starting Silver to Gold Pipeline…")

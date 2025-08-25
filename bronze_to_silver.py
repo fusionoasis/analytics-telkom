@@ -24,6 +24,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 from delta.tables import DeltaTable
+import math
 
 try:
     spark
@@ -31,7 +32,6 @@ except NameError:
     spark = None
 
 def dew_point_c(temp_c, humidity):
-    import math
     if temp_c is None or humidity is None or humidity <= 0:
         return None
     a, b = 17.62, 243.12
@@ -94,8 +94,8 @@ class TelkomBronzeToSilver:
         else:
             bronze_root = _resolve_external_location(self.bronze_external_location)
         if not bronze_root:
-            # Final fallback for non-UC local mounts
-            bronze_root = _normalize_base("/mnt/dlstelkomnetworkprod/bronze")
+            # Final fallback: use RAW container used by data generators
+            bronze_root = "abfss://raw@dlstelkomnetworkprod.dfs.core.windows.net"
 
         # Silver root
         silver_root = None
@@ -111,7 +111,7 @@ class TelkomBronzeToSilver:
         self.base_path = bronze_root
         self.bronze_path = bronze_root
         self.silver_path = silver_root
-        self.catalog = "telkom_analytics"
+        self.catalog = "TelkomDW"
         self.timezone = "Africa/Johannesburg"
 
     # Create silver base directory if possible (works on Databricks)
@@ -363,14 +363,14 @@ class TelkomBronzeToSilver:
                 f"CREATE TABLE {self.catalog}.dim_region_silver USING DELTA LOCATION '{dim_path}'"
             )
 
-        # tower_locations
+    # tower_locations
         tower_schema = StructType(
             [
                 StructField("tower_id", StringType(), True),
                 StructField("latitude", DoubleType(), True),
                 StructField("longitude", DoubleType(), True),
-                StructField("region_index", IntegerType(), True),
-                StructField("region", StringType(), True),
+        StructField("province_index", IntegerType(), True),
+        StructField("province", StringType(), True),
             ]
         )
         towers_raw = spark.read.schema(tower_schema).parquet(
@@ -382,7 +382,8 @@ class TelkomBronzeToSilver:
             .withColumn("longitude", self.clamp(col("longitude"), 16.0, 33.0))
             .withColumn("latitude", self.safe_round(col("latitude"), 6))
             .withColumn("longitude", self.safe_round(col("longitude"), 6))
-            .withColumn("region", upper(trim(col("region"))))
+        # New bronze has 'province' instead of 'region'
+        .withColumn("region", upper(trim(col("province"))))
             .join(region_df, "region", "inner")
             .withColumn("tower_sk", self.sha256_str(col("tower_id")))
             .select("tower_sk", "tower_id", "region_key", "region", "latitude", "longitude")
@@ -410,67 +411,94 @@ class TelkomBronzeToSilver:
             zorder_cols=["region_key", "tower_sk"],
         )
 
-        # network_logs
-        nw_schema = StructType(
-            [
-                StructField("tower_id", StringType(), True),
-                StructField("signal_strength", DoubleType(), True),
-                StructField("latency_ms", DoubleType(), True),
-                StructField("timestamp", TimestampType(), True),
-                StructField("uptime", DoubleType(), True),
-                StructField("error_codes", StringType(), True),
-                StructField("year", IntegerType(), True),
-                StructField("month", IntegerType(), True),
-                StructField("day", IntegerType(), True),
-                StructField("region_index", IntegerType(), True),
-                StructField("region", StringType(), True),
-            ]
-        )
-        nw_raw = spark.read.schema(nw_schema).parquet(
-            f"{self.bronze_path}/network_logs"
+    # network performance telemetry (store as network_performance_telemetry in silver)
+        telemetry_schema = StructType([
+            StructField("timestamp", TimestampType(), True),
+            StructField("equipment_id", StringType(), True),
+            StructField("tower_id", StringType(), True),
+            StructField("cpu_utilization_percent", DoubleType(), True),
+            StructField("memory_utilization_percent", DoubleType(), True),
+            StructField("disk_utilization_percent", DoubleType(), True),
+            StructField("temperature_celsius", DoubleType(), True),
+            StructField("humidity_percent", DoubleType(), True),
+            StructField("power_consumption_watts", DoubleType(), True),
+            StructField("input_voltage_volts", DoubleType(), True),
+            StructField("signal_strength_dbm", DoubleType(), True),
+            StructField("signal_quality_percent", DoubleType(), True),
+            StructField("noise_level_dbm", DoubleType(), True),
+            StructField("bit_error_rate", DoubleType(), True),
+            StructField("frame_error_rate", DoubleType(), True),
+            StructField("packet_loss_rate_percent", DoubleType(), True),
+            StructField("round_trip_time_ms", DoubleType(), True),
+            StructField("throughput_upload_mbps", DoubleType(), True),
+            StructField("throughput_download_mbps", DoubleType(), True),
+            StructField("active_connections_count", IntegerType(), True),
+            StructField("dropped_connections_count", IntegerType(), True),
+            StructField("bandwidth_utilization_percent", DoubleType(), True),
+            StructField("interface_errors_count", IntegerType(), True),
+            StructField("retransmission_count", IntegerType(), True),
+            StructField("uptime_seconds", IntegerType(), True),
+            StructField("alarm_status", StringType(), True),
+            StructField("alarm_code", StringType(), True),
+            StructField("snmp_status", StringType(), True),
+        ])
+        telemetry_raw = spark.read.schema(telemetry_schema).parquet(
+            f"{self.bronze_path}/network_performance_telemetry"
         )
         try:
-            nw_exists = spark.catalog.tableExists(f"{self.catalog}.network_logs")
+            nw_exists = spark.catalog.tableExists(f"{self.catalog}.network_performance_telemetry")
         except Exception:
             nw_exists = False
-        nw_wm = self.get_watermark("network_logs") if nw_exists else None
-        nw_enriched = (
-            nw_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
-            .withColumn("region", upper(trim(col("region"))))
-            .join(region_df, "region", "inner")
-            .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "inner")
-            .withColumn("signal_strength", self.clamp(col("signal_strength"), 0.0, 100.0))
-            .withColumn("latency_ms", self.clamp(col("latency_ms"), 0.0, 1000.0))
-            .withColumn("uptime", self.clamp(col("uptime"), 0.0, 100.0))
-            .withColumn("error_code", coalesce(col("error_codes"), lit("NONE")))
-            .withColumn(
-                "performance_category",
-                when((col("signal_strength") > 80) & (col("latency_ms") < 50), "GOOD").otherwise("POOR"),
-            )
+        nw_wm = self.get_watermark("network_performance_telemetry") if nw_exists else None
+        telemetry_enriched = (
+            telemetry_raw
+            .join(towers_silver.select("tower_id", "tower_sk", "region_key"), "tower_id", "inner")
+            .withColumn("ts_utc", self.to_utc(col("timestamp")))
         )
         if nw_wm is not None:
-            nw_enriched = nw_enriched.filter(col("ts_utc") > lit(nw_wm))
-        nw_silver = (
-            nw_enriched.withColumn("date_key", date_format(col("ts_utc"), "yyyyMMdd").cast("int"))
-            .withColumn("hour_key", hour(col("ts_utc")))
-            .withColumn("nw_row_sk", self.sha256_str(col("tower_sk"), col("ts_utc")))
-            .dropDuplicates(["nw_row_sk"]).select(
-                "nw_row_sk",
+            telemetry_enriched = telemetry_enriched.filter(col("ts_utc") > lit(nw_wm))
+        # Map to legacy network_logs schema expected downstream
+        nw_mapped = (
+            telemetry_enriched
+            .withColumn("signal_strength", self.clamp(col("signal_quality_percent"), 0.0, 100.0))
+            .withColumn("latency_ms", self.clamp(col("round_trip_time_ms"), 0.0, 10000.0))
+            .withColumn(
+                "uptime",
+                self.clamp(
+                    (100.0 - (100.0 * (coalesce(col("dropped_connections_count"), lit(0)) / (coalesce(col("active_connections_count"), lit(0)) + coalesce(col("dropped_connections_count"), lit(0)) + lit(1))))),
+                    0.0,
+                    100.0,
+                ),
+            )
+            .withColumn(
+                "error_code",
+                when(upper(trim(col("alarm_status"))) == lit("CLEAR"), lit("NONE")).otherwise(coalesce(col("alarm_code"), lit("NONE"))),
+            )
+            .withColumn(
+                "performance_category",
+                when((col("signal_strength") > 80) & (col("latency_ms") < 50), lit("GOOD")).otherwise(lit("POOR")),
+            )
+            .select(
                 "tower_sk",
                 "region_key",
-                "date_key",
                 "ts_utc",
                 "signal_strength",
                 "latency_ms",
                 "uptime",
                 "error_code",
                 "performance_category",
-                "hour_key",
             )
+        )
+        nw_silver = (
+            nw_mapped
+            .withColumn("date_key", date_format(col("ts_utc"), "yyyyMMdd").cast("int"))
+            .withColumn("hour_key", hour(col("ts_utc")))
+            .withColumn("nw_row_sk", self.sha256_str(col("tower_sk"), col("ts_utc")))
+            .dropDuplicates(["nw_row_sk"])
         )
         self.merge_into_delta_table(
             source_df=nw_silver,
-            target_table="network_logs",
+            target_table="network_performance_telemetry",
             partition_cols=["date_key"],
             merge_condition="target.nw_row_sk = source.nw_row_sk",
             update_cols={
@@ -500,7 +528,65 @@ class TelkomBronzeToSilver:
             },
             zorder_cols=["tower_sk", "ts_utc"],
         )
-        self.compute_and_update_watermark(nw_silver, "ts_utc", "network_logs")
+        self.compute_and_update_watermark(nw_silver, "ts_utc", "network_performance_telemetry")
+
+        # network_equipment_inventory -> silver equipment_inventory
+        equipment_schema = StructType([
+            StructField("equipment_id", StringType(), True),
+            StructField("tower_id", StringType(), True),
+            StructField("equipment_type", StringType(), True),
+            StructField("manufacturer", StringType(), True),
+            StructField("model", StringType(), True),
+            StructField("serial_number", StringType(), True),
+            StructField("firmware_version", StringType(), True),
+            StructField("hardware_version", StringType(), True),
+            StructField("installation_date", TimestampType(), True),
+            StructField("warranty_expiry_date", TimestampType(), True),
+            StructField("last_maintenance_date", TimestampType(), True),
+            StructField("maintenance_schedule", StringType(), True),
+            StructField("operational_status", StringType(), True),
+            StructField("power_consumption_watts", IntegerType(), True),
+            StructField("operating_frequency_mhz", IntegerType(), True),
+            StructField("bandwidth_capacity_mbps", IntegerType(), True),
+            StructField("technology_standard", StringType(), True),
+            StructField("coverage_radius_meters", IntegerType(), True),
+            StructField("antenna_gain_dbi", DoubleType(), True),
+            StructField("transmit_power_dbm", DoubleType(), True),
+            StructField("receive_sensitivity_dbm", DoubleType(), True),
+            StructField("temperature_rating_min_celsius", IntegerType(), True),
+            StructField("temperature_rating_max_celsius", IntegerType(), True),
+            StructField("humidity_rating_percent", IntegerType(), True),
+            StructField("ip_address", StringType(), True),
+            StructField("snmp_community", StringType(), True),
+        ])
+        try:
+            equipment_raw = spark.read.schema(equipment_schema).parquet(
+                f"{self.bronze_path}/network_equipment_inventory"
+            )
+            equipment_enriched = equipment_raw \
+                .join(towers_silver.select("tower_id", "tower_sk", "region_key"), "tower_id", "left") \
+                .withColumn("equipment_sk", self.sha256_str(col("equipment_id")))
+            equipment_cols = [
+                "equipment_sk", "equipment_id", "tower_sk", "tower_id", "region_key",
+                "equipment_type", "manufacturer", "model", "serial_number",
+                "firmware_version", "hardware_version", "installation_date", "warranty_expiry_date", "last_maintenance_date",
+                "maintenance_schedule", "operational_status", "power_consumption_watts", "operating_frequency_mhz",
+                "bandwidth_capacity_mbps", "technology_standard", "coverage_radius_meters", "antenna_gain_dbi",
+                "transmit_power_dbm", "receive_sensitivity_dbm", "temperature_rating_min_celsius", "temperature_rating_max_celsius",
+                "humidity_rating_percent", "ip_address", "snmp_community"
+            ]
+            equipment_silver = equipment_enriched.select(*equipment_cols).dropDuplicates(["equipment_sk"])
+            self.merge_into_delta_table(
+                source_df=equipment_silver,
+                target_table="network_equipment_inventory",
+                partition_cols=["technology_standard"],
+                merge_condition="target.equipment_sk = source.equipment_sk",
+                update_cols={c: f"source.{c}" for c in equipment_cols if c != "equipment_sk"},
+                insert_cols={c: f"source.{c}" for c in equipment_cols},
+                zorder_cols=["region_key", "tower_sk", "technology_standard"],
+            )
+        except Exception as e:
+            print(f"⚠️ network_equipment_inventory not loaded: {e}")
 
         # weather_data
         w_schema = StructType(
@@ -605,31 +691,24 @@ class TelkomBronzeToSilver:
         )
         self.compute_and_update_watermark(weather_silver, "ts_utc", "weather_data")
 
-        # customer_usage
-        cu_schema = StructType(
-            [
-                StructField("customer_id", StringType(), True),
-                StructField("tower_id", StringType(), True),
-                StructField("data_usage_mb", DoubleType(), True),
-                StructField("call_duration_min", DoubleType(), True),
-                StructField("timestamp", TimestampType(), True),
-                StructField("data_usage", DoubleType(), True),
-                StructField("call_duration", DoubleType(), True),
-                StructField("year", IntegerType(), True),
-                StructField("month", IntegerType(), True),
-                StructField("day", IntegerType(), True),
-            ]
-        )
-        cu_raw = spark.read.schema(cu_schema).parquet(
-            f"{self.bronze_path}/customer_usage"
-        )
+        # customer_usage (schema-flexible)
+        cu_raw = spark.read.parquet(f"{self.bronze_path}/customer_usage")
         try:
             cu_exists = spark.catalog.tableExists(f"{self.catalog}.customer_usage")
         except Exception:
             cu_exists = False
         cu_wm = self.get_watermark("customer_usage") if cu_exists else None
+        # Derive common columns
+        cu_tmp = cu_raw
+        # Normalize identifiers and metrics
+        if "customer_id" not in cu_tmp.columns and "anonymized_customer_id" in cu_tmp.columns:
+            cu_tmp = cu_tmp.withColumn("customer_id", col("anonymized_customer_id"))
+        if "data_usage_mb" not in cu_tmp.columns and "data_volume_bytes" in cu_tmp.columns:
+            cu_tmp = cu_tmp.withColumn("data_usage_mb", (col("data_volume_bytes") / (1024.0 * 1024.0)).cast("double"))
+        if "call_duration_min" not in cu_tmp.columns and "call_duration_seconds" in cu_tmp.columns:
+            cu_tmp = cu_tmp.withColumn("call_duration_min", (col("call_duration_seconds") / 60.0).cast("double"))
         cu_enriched = (
-            cu_raw.withColumn("ts_utc", self.to_utc(col("timestamp")))
+            cu_tmp.withColumn("ts_utc", self.to_utc(col("timestamp")))
             .join(towers_silver.select("tower_id", "tower_sk"), "tower_id", "left")
             .withColumn("data_usage_mb", self.clamp(col("data_usage_mb"), 0.0, 50000.0))
             .withColumn("call_duration_min", self.clamp(col("call_duration_min"), 0.0, 1440.0))
@@ -644,7 +723,7 @@ class TelkomBronzeToSilver:
             cu_enriched.withColumn("date_key", date_format(col("ts_utc"), "yyyyMMdd").cast("int"))
             .withColumn("hour_key", hour(col("ts_utc")))
             .withColumn("customer_sk", self.sha256_str(col("customer_id")))
-            .withColumn("usage_row_sk", self.sha256_str(col("customer_sk"), col("ts_utc")))
+            .withColumn("usage_row_sk", self.sha256_str(col("customer_sk"), col("tower_sk"), col("ts_utc")))
             .dropDuplicates(["usage_row_sk"]).select(
                 "usage_row_sk",
                 "customer_sk",
@@ -686,6 +765,51 @@ class TelkomBronzeToSilver:
             zorder_cols=["tower_sk", "customer_sk", "ts_utc"],
         )
         self.compute_and_update_watermark(cu_silver, "ts_utc", "customer_usage")
+
+        # customer_service_records
+        try:
+            csr_raw = spark.read.parquet(f"{self.bronze_path}/customer_service_records")
+        except Exception as e:
+            csr_raw = None
+            print(f"⚠️ customer_service_records not loaded: {e}")
+        if csr_raw is not None:
+            try:
+                csr_exists = spark.catalog.tableExists(f"{self.catalog}.customer_service_records")
+            except Exception:
+                csr_exists = False
+            csr_wm = self.get_watermark("customer_service_records") if csr_exists else None
+            csr_tmp = csr_raw
+            # Use suspected_tower_id if present
+            st_col = "suspected_tower_id" if "suspected_tower_id" in csr_tmp.columns else ("tower_id" if "tower_id" in csr_tmp.columns else None)
+            if st_col:
+                csr_tmp = csr_tmp.withColumnRenamed(st_col, "suspected_tower_id")
+            csr_enriched = csr_tmp
+            if st_col:
+                csr_enriched = csr_enriched.join(
+                    towers_silver.select("tower_id", "tower_sk").withColumnRenamed("tower_id", "suspected_tower_id"),
+                    "suspected_tower_id",
+                    "left",
+                )
+            csr_enriched = csr_enriched.withColumn("ts_utc", self.to_utc(col("timestamp")))
+            if csr_wm is not None:
+                csr_enriched = csr_enriched.filter(col("ts_utc") > lit(csr_wm))
+            csr_silver = (
+                csr_enriched
+                .withColumn("date_key", date_format(col("ts_utc"), "yyyyMMdd").cast("int"))
+                .withColumn("hour_key", hour(col("ts_utc")))
+                .withColumn("row_sk", self.sha256_str(coalesce(col("ticket_id"), lit("")), col("ts_utc")))
+                .dropDuplicates(["row_sk"]) 
+            )
+            self.merge_into_delta_table(
+                source_df=csr_silver,
+                target_table="customer_service_records",
+                partition_cols=["date_key"],
+                merge_condition="target.row_sk = source.row_sk",
+                update_cols={c: f"source.{c}" for c in csr_silver.columns},
+                insert_cols={c: f"source.{c}" for c in csr_silver.columns},
+                zorder_cols=["ts_utc"],
+            )
+            self.compute_and_update_watermark(csr_silver, "ts_utc", "customer_service_records")
 
         # load_shedding_schedules
         ls_schema = StructType(
@@ -1204,20 +1328,59 @@ class TelkomBronzeToSilver:
         )
         self.compute_and_update_watermark(mc_silver, "shift_start_utc", "maintenance_crew")
 
+        # Generic passthrough for additional datasets to complete the 16-table silver layer
+        generic_names = [
+            "network_traffic_analytics",
+            "financial_billing_data",
+            "network_maintenance_records",
+            "competitor_analysis_data",
+            "regulatory_compliance_data",
+        ]
+        for name in generic_names:
+            try:
+                df_raw = spark.read.parquet(f"{self.bronze_path}/{name}")
+            except Exception as e:
+                # Create a minimal placeholder if source missing
+                print(f"⚠️ {name} not found in bronze; creating empty placeholder table. {e}")
+                df_raw = spark.createDataFrame([], StructType([StructField("row_sk", StringType(), True)]))
+            df_aug = df_raw
+            # Add UTC and partition if a timestamp-like column exists
+            if "timestamp" in df_aug.columns:
+                df_aug = df_aug.withColumn("ts_utc", self.to_utc(col("timestamp")))
+                df_aug = df_aug.withColumn("date_key", date_format(col("ts_utc"), "yyyyMMdd").cast("int"))
+            # Deterministic row key from all available columns
+            row_key_cols = [col(c).cast("string") for c in df_aug.columns]
+            df_aug = df_aug.withColumn("row_sk", self.sha256_str(*row_key_cols)).dropDuplicates(["row_sk"])
+            part_cols = ["date_key"] if "date_key" in df_aug.columns else []
+            self.merge_into_delta_table(
+                source_df=df_aug,
+                target_table=name,
+                partition_cols=part_cols,
+                merge_condition="target.row_sk = source.row_sk",
+                update_cols={c: f"source.{c}" for c in df_aug.columns},
+                insert_cols={c: f"source.{c}" for c in df_aug.columns},
+                zorder_cols=["ts_utc"] if "ts_utc" in df_aug.columns else [df_aug.columns[0]],
+            )
+
     def generate_silver_summary(self):
         print("Generating silver layer summary...")
         tables_to_check = [
-            "dim_region_silver",
             "tower_locations",
-            "network_logs",
-            "weather_data",
+            "network_equipment_inventory",
+            "network_performance_telemetry",
             "customer_usage",
+            "customer_service_records",
+            "weather_data",
             "load_shedding_schedules",
-            "customer_feedback",
-            "tower_imagery",
-            "voice_transcriptions",
+            "network_traffic_analytics",
+            "financial_billing_data",
+            "network_maintenance_records",
+            "competitor_analysis_data",
+            "regulatory_compliance_data",
             "tower_connectivity",
             "tower_capacity",
+            "tower_imagery",
+            "voice_transcriptions",
             "maintenance_crew",
         ]
         table_stats = {}
@@ -1229,10 +1392,10 @@ class TelkomBronzeToSilver:
             except Exception as e:
                 print(f"⚠️ Could not get count for {table}: {e}")
         print("🏗️ Silver Layer Summary:")
-        print("   📊 12 tables created with partitioning by date_key or region_key")
-        print("   🔄 Incremental updates via MERGE operations")
-        print("   ✅ Data cleaned and enriched with surrogate keys")
-        print("   🚀 Optimized with ZORDER for query performance")
+        print("   📊 Target tables: " + ", ".join(tables_to_check))
+        print("   🔄 Incremental updates via MERGE where applicable")
+        print("   ✅ Data cleaned, keyed, and partitioned by date when timestamps are present")
+        print("   🚀 Optimized with ZORDER for query performance where supported")
 
     def run_bronze_to_silver_pipeline(self):
         print("Starting Bronze to Silver Pipeline...")
